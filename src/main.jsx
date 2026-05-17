@@ -6,5 +6,6 @@ import App from './App.jsx'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
+    // eslint-disable-next-line react/jsx-no-undef
   </StrictMode>,
 )
