@@ -41,7 +41,8 @@ export default function Navbar() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
-  const role = normalizeRole(user?.role)
+  const storeRole = useAuthStore((s) => s.role)
+  const role = normalizeRole(storeRole || user?.role)
 
   const isActive = (path) => location.pathname === path
 

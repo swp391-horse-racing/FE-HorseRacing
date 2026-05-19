@@ -4,8 +4,8 @@ import { normalizeRole } from '@/utils/roleRedirect'
 
 export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
   const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
   const isLoading = useAuthStore((s) => s.isLoading)
-  const role = normalizeRole(user?.role)
 
   if (isLoading) {
     return (
@@ -15,9 +15,11 @@ export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
     )
   }
 
+  const currentRole = normalizeRole(role || user?.role)
   const normalized = allowedRoles.map((r) => normalizeRole(r))
-  if (!role || !normalized.includes(role)) {
-    return <Navigate to="/dashboard" replace />
+
+  if (!currentRole || !normalized.includes(currentRole)) {
+    return <Navigate to="/unauthorized" replace />
   }
 
   return children

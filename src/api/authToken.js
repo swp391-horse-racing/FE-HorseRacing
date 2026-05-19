@@ -1,13 +1,6 @@
-let accessToken = null
-
-export function getAccessToken() {
-  return accessToken
-}
-
-export function setAccessToken(token) {
-  accessToken = token
-}
-
-export function clearAccessToken() {
-  accessToken = null
-}
+/** @deprecated use @/utils/tokenStorage — giữ để tương thích import cũ */
+export {
+  getStoredToken as getAccessToken,
+  setStoredToken as setAccessToken,
+  removeStoredToken as clearAccessToken,
+} from '@/utils/tokenStorage'
