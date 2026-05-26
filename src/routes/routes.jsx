@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
 import MainLayout from '@/layouts/MainLayout'
 import ProtectedRoute from '@/auth/ProtectedRoute'
 import RoleProtectedRoute from '@/auth/RoleProtectedRoute'
@@ -15,9 +15,9 @@ import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import ProfilePage from '@/pages/profile/ProfilePage'
 import AdminHomePage from '@/pages/admin/AdminHomePage'
-import AdminTournamentsPage from '@/pages/AdminTournamentsPage'
-import AdminTournamentCreatePage from '@/pages/AdminTournamentCreatePage'
-import AdminTournamentDetailPage from '@/pages/AdminTournamentDetailPage'
+import AdminTournamentsPage from '@/pages/admin/AdminTournamentsPage'
+import AdminTournamentCreatePage from '@/pages/admin/AdminTournamentCreatePage'
+import AdminTournamentDetailPage from '@/pages/admin/AdminTournamentDetailPage'
 import AdminNewsPage from '@/pages/admin/AdminNewsPage'
 import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import AdminStatisticsPage from '@/pages/admin/AdminStatisticsPage'
@@ -190,6 +190,5 @@ export const router = createBrowserRouter([
   { path: '/forgot-password', Component: ForgotPasswordPage },
   { path: '/verify-otp', Component: VerifyOtpPage },
   { path: '/reset-password', Component: ResetPasswordPage },
-  { path: '/logout-demo', element: <Navigate to="/" replace /> },
   { path: '*', Component: NotFoundPage },
 ])
