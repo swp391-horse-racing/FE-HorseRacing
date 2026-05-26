@@ -7,5 +7,4 @@ export const ROUTES = {
   ABOUT: '/about',
   TOURNAMENTS: '/tournaments',
   RANKINGS: '/rankings',
-  LOGOUT_DEMO: '/logout-demo',
 }
