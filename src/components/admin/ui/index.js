@@ -12,3 +12,4 @@ export {
   BarSummary,
 } from './Panel'
 export * from './styles'
+export { PrimaryButton, PrimaryLink, GhostButton } from './AdminButton'
