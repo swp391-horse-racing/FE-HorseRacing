@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { BadgeCheck, Search, Shield, UserCheck, UserX, Users } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import InviteUserModal from '@/components/admin/InviteUserModal'
+import { PrimaryButton } from '@/components/admin/ui/AdminButton'
 
 const userRows = [
   {
@@ -91,6 +93,7 @@ export default function AdminUsersPage() {
   const [section, setSection] = useState('users')
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('Tất cả')
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('vi')
@@ -106,8 +109,14 @@ export default function AdminUsersPage() {
     <AdminLayout
       heading="Người dùng"
       highlight="Quản lý"
-      subtitle="Theo dõi tài khoản và yêu cầu nâng cấp quyền trong hệ thống"
+      subtitle="Chủ ngựa, jockey, trọng tài, khán giả và yêu cầu cấp quyền"
+      action={
+        <PrimaryButton icon={UserCheck} onClick={() => setInviteOpen(true)}>
+          Mời người dùng
+        </PrimaryButton>
+      }
     >
+      <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
       <section className="mb-8 grid gap-5 md:grid-cols-4">
         {[
           { label: 'Tổng người dùng', value: userRows.length, icon: Users, tone: 'bg-[#dda50e]/15 text-[#dda50e]' },
