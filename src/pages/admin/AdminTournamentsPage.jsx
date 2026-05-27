@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { PrimaryLink } from '@/components/admin/ui/AdminButton'
 import {
   CalendarDays,
   ChevronDown,
@@ -108,13 +109,9 @@ export default function AdminTournamentsPage() {
       highlight="Giải đấu"
       subtitle="Tạo, cấu hình và theo dõi các giải đua ngựa"
       action={
-        <Link
-          to="/admin/tournaments/new"
-          className="inline-flex h-16 items-center gap-3 rounded-2xl bg-[#dda50e] px-9 text-lg font-semibold shadow-xl shadow-[#d4a017]/25 transition hover:bg-[#c8940f]"
-        >
-          <Plus className="h-5 w-5" />
+        <PrimaryLink to="/admin/tournaments/new" icon={Plus} size="lg">
           Tạo giải đấu
-        </Link>
+        </PrimaryLink>
       }
     >
       <section className="mb-8 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045]">

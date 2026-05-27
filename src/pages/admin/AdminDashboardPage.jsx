@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { PrimaryLink } from '@/components/admin/ui/AdminButton'
 import {
   Activity,
   ArrowRight,
@@ -57,13 +58,9 @@ export default function AdminDashboardPage() {
   return (
     <AdminLayout
       action={
-        <Link
-          to="/admin/tournaments/new"
-          className="inline-flex h-16 items-center gap-3 rounded-2xl bg-[#dda50e] px-8 text-lg font-semibold shadow-xl shadow-[#d4a017]/25 transition hover:bg-[#c8940f]"
-        >
-          <Trophy className="h-5 w-5" />
+        <PrimaryLink to="/admin/tournaments/new" icon={Trophy} size="lg">
           Tạo giải đấu mới
-        </Link>
+        </PrimaryLink>
       }
     >
       <section aria-label="Chỉ số tổng quan" className="mb-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
