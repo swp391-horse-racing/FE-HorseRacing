@@ -3,6 +3,8 @@ import AdminTournamentsPage from '@/pages/admin/AdminTournamentsPage'
 import AdminTournamentCreatePage from '@/pages/admin/AdminTournamentCreatePage'
 import AdminTournamentDetailPage from '@/pages/admin/AdminTournamentDetailPage'
 import AdminNewsPage from '@/pages/admin/AdminNewsPage'
+import AdminNewsCreatePage from '@/pages/admin/AdminNewsCreatePage'
+import AdminNewsEditPage from '@/pages/admin/AdminNewsEditPage'
 import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import AdminStatisticsPage from '@/pages/admin/AdminStatisticsPage'
 import AdminNotificationsPage from '@/pages/admin/AdminNotificationsPage'
@@ -19,6 +21,8 @@ export const adminRoutes = [
   adminRoute('/admin/tournaments/new', AdminTournamentCreatePage),
   adminRoute('/admin/tournaments/:id', AdminTournamentDetailPage),
   adminRoute('/admin/news', AdminNewsPage),
+  adminRoute('/admin/news/create', AdminNewsCreatePage),
+  adminRoute('/admin/news/:id/edit', AdminNewsEditPage),
   adminRoute('/admin/users', AdminUsersPage),
   adminRoute('/admin/statistics', AdminStatisticsPage),
   adminRoute('/admin/notifications', AdminNotificationsPage),
