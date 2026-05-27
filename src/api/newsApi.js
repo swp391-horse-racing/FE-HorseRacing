@@ -107,4 +107,66 @@ export const newsApi = {
 
     return { data: mapped.slice(0, limit) }
   },
+
+  /** Admin: GET /admin/news/{id} */
+  async getAdminNewsById(id) {
+    const article = await api.get(`/admin/news/${id}`).then(unwrap)
+    const mapped = mapNewsArticle(article)
+    if (!mapped) throw new Error('News not found')
+    return { data: mapped }
+  },
+
+  /** Admin: POST /admin/news */
+  async createNews(payload, imageFile) {
+    const body = {
+      title: payload.title,
+      summary: payload.summary ?? payload.shortDescription ?? '',
+      content: payload.content,
+      category: payload.category,
+      featured: Boolean(payload.featured),
+      publishedAt: payload.publishedAt ?? new Date().toISOString().slice(0, 19),
+    }
+
+    if (imageFile) {
+      const formData = new FormData()
+      formData.append('data', new Blob([JSON.stringify(body)], { type: 'application/json' }))
+      formData.append('image', imageFile)
+      const article = await api
+        .post('/admin/news', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then(unwrap)
+      return { data: mapNewsArticle(article) }
+    }
+
+    const article = await api.post('/admin/news', body).then(unwrap)
+    return { data: mapNewsArticle(article) }
+  },
+
+  /** Admin: PUT /admin/news/{id} */
+  async updateNews(id, payload, imageFile) {
+    const body = {
+      title: payload.title,
+      summary: payload.summary ?? payload.shortDescription ?? '',
+      content: payload.content,
+      category: payload.category,
+      featured: Boolean(payload.featured),
+    }
+
+    if (imageFile) {
+      const formData = new FormData()
+      formData.append('data', new Blob([JSON.stringify(body)], { type: 'application/json' }))
+      formData.append('image', imageFile)
+      const article = await api
+        .put(`/admin/news/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then(unwrap)
+      return { data: mapNewsArticle(article) }
+    }
+
+    const article = await api.put(`/admin/news/${id}`, body).then(unwrap)
+    return { data: mapNewsArticle(article) }
+  },
+
+  /** Admin: DELETE /admin/news/{id} */
+  async deleteNews(id) {
+    await api.delete(`/admin/news/${id}`).then(unwrap)
+  },
 }
