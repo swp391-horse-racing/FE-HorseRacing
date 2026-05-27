@@ -1,1 +1,2 @@
-export { HttpError, parseResponse } from './httpError'
+export { HttpError, parseResponse } from "./httpError";
+export { createSlug } from "./createSlug";

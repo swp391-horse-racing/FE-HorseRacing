@@ -1,41 +1,55 @@
-import { apiClient } from '@/api/client'
+import { apiClient } from "@/api/client";
 
 function unwrap(response) {
-  if (response && typeof response === 'object' && 'success' in response) {
+  if (response && typeof response === "object" && "success" in response) {
     if (!response.success) {
-      throw new Error(response.message || 'Request failed')
+      throw new Error(response.message || "Request failed");
     }
-    return response.data
+    return response.data;
   }
-  return response
+  return response;
 }
 
 function deriveUsername(email) {
-  let name = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')
+  let name = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
   if (name.length < 3) {
-    name = `user_${name}${Date.now().toString().slice(-4)}`
+    name = `user_${name}${Date.now().toString().slice(-4)}`;
   }
-  return name.slice(0, 50)
+  return name.slice(0, 50);
 }
 
 export const authService = {
   register: async ({ fullName, email, password }) => {
-    const res = await apiClient.post('auth/register', {
+    const res = await apiClient.post("users/register", {
       username: deriveUsername(email),
       fullName,
       email,
       password,
-    })
-    return unwrap(res)
+    });
+    return unwrap(res);
+  },
+
+  login: async ({ email, password }) => {
+    const res = await apiClient.post("users/login", { email, password });
+    return unwrap(res);
+  },
+
+  getMe: async () => {
+    const res = await apiClient.get("users/me");
+    return unwrap(res);
   },
 
   forgotPassword: async (email) => {
-    const res = await apiClient.post('auth/forgot-password', { email })
-    return unwrap(res)
+    const res = await apiClient.post("auth/forgot-password", { email });
+    return unwrap(res);
   },
 
   resetPassword: async ({ email, otp, newPassword }) => {
-    const res = await apiClient.post('auth/reset-password', { email, otp, newPassword })
-    return unwrap(res)
+    const res = await apiClient.post("auth/reset-password", {
+      email,
+      otp,
+      newPassword,
+    });
+    return unwrap(res);
   },
-}
+};
