@@ -1,55 +1,34 @@
-import { apiClient } from "@/api/client";
-
-function unwrap(response) {
-  if (response && typeof response === "object" && "success" in response) {
-    if (!response.success) {
-      throw new Error(response.message || "Request failed");
-    }
-    return response.data;
-  }
-  return response;
-}
-
-function deriveUsername(email) {
-  let name = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
-  if (name.length < 3) {
-    name = `user_${name}${Date.now().toString().slice(-4)}`;
-  }
-  return name.slice(0, 50);
-}
+import axiosClient from '@/api/axiosClient'
+import { ENDPOINTS } from '@/api/endpoints'
+import { unwrapResponse } from '@/api/response'
+import { deriveUsername } from '@/utils/validation'
 
 export const authService = {
-  register: async ({ fullName, email, password }) => {
-    const res = await apiClient.post("users/register", {
-      username: deriveUsername(email),
-      fullName,
-      email,
-      password,
-    });
-    return unwrap(res);
-  },
+  register: (payload) =>
+    axiosClient
+      .post(ENDPOINTS.auth.register, {
+        username: deriveUsername(payload.email),
+        fullName: payload.fullName,
+        email: payload.email,
+        password: payload.password,
+      })
+      .then(unwrapResponse),
 
-  login: async ({ email, password }) => {
-    const res = await apiClient.post("users/login", { email, password });
-    return unwrap(res);
-  },
+  login: (payload) => axiosClient.post(ENDPOINTS.auth.login, payload).then(unwrapResponse),
 
-  getMe: async () => {
-    const res = await apiClient.get("users/me");
-    return unwrap(res);
-  },
+  loginGoogle: (idToken) =>
+    axiosClient.post(ENDPOINTS.auth.google, { idToken }).then(unwrapResponse),
 
-  forgotPassword: async (email) => {
-    const res = await apiClient.post("auth/forgot-password", { email });
-    return unwrap(res);
-  },
+  loginFacebook: (accessToken) =>
+    axiosClient.post(ENDPOINTS.auth.facebook, { accessToken }).then(unwrapResponse),
 
-  resetPassword: async ({ email, otp, newPassword }) => {
-    const res = await apiClient.post("auth/reset-password", {
-      email,
-      otp,
-      newPassword,
-    });
-    return unwrap(res);
-  },
-};
+  logout: () => axiosClient.post(ENDPOINTS.auth.logout).then(unwrapResponse),
+
+  getMe: () => axiosClient.get(ENDPOINTS.auth.me).then(unwrapResponse),
+
+  forgotPassword: (email) =>
+    axiosClient.post(ENDPOINTS.auth.forgotPassword, { email }).then(unwrapResponse),
+
+  resetPassword: (payload) =>
+    axiosClient.post(ENDPOINTS.auth.resetPassword, payload).then(unwrapResponse),
+}

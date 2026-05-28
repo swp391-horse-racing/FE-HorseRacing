@@ -1,23 +1,26 @@
-import { useState } from "react";
-import { Mail, X } from "lucide-react";
-import { toast } from "sonner";
-import { GhostButton, PrimaryButton } from "@/components/admin/ui/AdminButton";
-import { inputClass } from "@/components/admin/ui/styles";
+import { useState } from 'react'
+import { Mail, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { GhostButton, PrimaryButton } from '@/components/admin/ui/AdminButton'
+import { inputClass } from '@/components/admin/ui/styles'
 
 export default function InviteUserModal({ open, onClose }) {
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Khán giả");
-  if (!open) return null;
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('Khán giả')
+
+  if (!open) return null
+
   const submit = (event) => {
-    event.preventDefault();
+    event.preventDefault()
     if (!email.trim()) {
-      toast.error("Vui lòng nhập email");
-      return;
+      toast.error('Vui lòng nhập email')
+      return
     }
-    toast.success(`Đã gửi lời mời tới ${email.trim()}`);
-    setEmail("");
-    onClose();
-  };
+    toast.success(`Đã gửi lời mời tới ${email.trim()}`)
+    setEmail('')
+    onClose()
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div
@@ -35,9 +38,7 @@ export default function InviteUserModal({ open, onClose }) {
               <h2 id="invite-user-title" className="text-lg font-bold">
                 Mời người dùng
               </h2>
-              <p className="text-sm text-white/50">
-                Gửi lời mời tham gia hệ thống
-              </p>
+              <p className="text-sm text-white/50">Gửi lời mời tham gia hệ thống</p>
             </div>
           </div>
           <button
@@ -49,6 +50,7 @@ export default function InviteUserModal({ open, onClose }) {
             <X className="h-5 w-5" />
           </button>
         </div>
+
         <form onSubmit={submit} className="space-y-4">
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/55">
@@ -62,6 +64,7 @@ export default function InviteUserModal({ open, onClose }) {
               className={inputClass}
             />
           </label>
+
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/55">
               Vai trò mặc định
@@ -77,6 +80,7 @@ export default function InviteUserModal({ open, onClose }) {
               <option>Trọng tài</option>
             </select>
           </label>
+
           <div className="flex justify-end gap-3 pt-2">
             <GhostButton type="button" onClick={onClose}>
               Hủy
@@ -86,5 +90,5 @@ export default function InviteUserModal({ open, onClose }) {
         </form>
       </div>
     </div>
-  );
+  )
 }
