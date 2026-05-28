@@ -1,25 +1,20 @@
-import { useState } from "react";
-import {
-  DollarSign,
-  FileText,
-  Mail,
-  Palette,
-  Settings,
-  Shield,
-} from "lucide-react";
-import AdminLayout from "@/components/admin/AdminLayout";
-import Field from "@/components/admin/ui/Field";
-import { inputClass } from "@/components/admin/ui/styles";
+import { useState } from 'react'
+import { DollarSign, FileText, Mail, Palette, Settings, Shield } from 'lucide-react'
+import AdminLayout from '@/components/admin/AdminLayout'
+import Field from '@/components/admin/ui/Field'
+import { inputClass } from '@/components/admin/ui/styles'
 
 const tabs = [
-  { key: "fees", label: "Lệ phí mặc định", icon: DollarSign },
-  { key: "rules", label: "Luật mặc định", icon: FileText },
-  { key: "email", label: "Mẫu email", icon: Mail },
-  { key: "security", label: "Bảo mật", icon: Shield },
-  { key: "brand", label: "Thương hiệu", icon: Palette },
-];
+  { key: 'fees', label: 'Lệ phí mặc định', icon: DollarSign },
+  { key: 'rules', label: 'Luật mặc định', icon: FileText },
+  { key: 'email', label: 'Mẫu email', icon: Mail },
+  { key: 'security', label: 'Bảo mật', icon: Shield },
+  { key: 'brand', label: 'Thương hiệu', icon: Palette },
+]
+
 export default function AdminSettingsPage() {
-  const [tab, setTab] = useState("fees");
+  const [tab, setTab] = useState('fees')
+
   return (
     <AdminLayout
       heading="Cài đặt"
@@ -28,56 +23,49 @@ export default function AdminSettingsPage() {
     >
       <section className="mb-6 flex flex-wrap gap-2 rounded-3xl border border-white/10 bg-white/[0.045] p-2">
         {tabs.map((item) => {
-          const Icon = item.icon;
-          const active = tab === item.key;
+          const Icon = item.icon
+          const active = tab === item.key
+
           return (
             <button
               key={item.key}
               type="button"
               onClick={() => setTab(item.key)}
-              className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${active ? "bg-[#dda50e] text-white shadow-lg shadow-[#d4a017]/30" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                active
+                  ? 'bg-[#dda50e] text-white shadow-lg shadow-[#d4a017]/30'
+                  : 'text-white/60 hover:bg-white/5 hover:text-white'
+              }`}
             >
               <Icon className="h-4 w-4" />
               {item.label}
             </button>
-          );
+          )
         })}
       </section>
+
       <section className="rounded-3xl border border-white/10 bg-white/[0.045]">
         <div className="flex items-center gap-4 border-b border-white/10 px-6 py-5">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#dda50e]/15 text-[#dda50e]">
             <Settings className="h-6 w-6" />
           </span>
           <div>
-            <h2 className="text-xl font-bold">
-              {tabs.find((item) => item.key === tab)?.label}
-            </h2>
+            <h2 className="text-xl font-bold">{tabs.find((item) => item.key === tab)?.label}</h2>
             <p className="text-sm text-white/50">Thiết lập nhanh theo module</p>
           </div>
         </div>
+
         <div className="grid gap-5 p-6 md:grid-cols-2">
-          {tab === "fees" && (
+          {tab === 'fees' && (
             <>
               <Field label="Lệ phí đăng ký mặc định (VNĐ)">
-                <input
-                  type="number"
-                  defaultValue={5000000}
-                  className={inputClass}
-                />
+                <input type="number" defaultValue={5000000} className={inputClass} />
               </Field>
               <Field label="Tiền cọc mặc định (VNĐ)">
-                <input
-                  type="number"
-                  defaultValue={10000000}
-                  className={inputClass}
-                />
+                <input type="number" defaultValue={10000000} className={inputClass} />
               </Field>
               <Field label="Phí trễ hạn (VNĐ)">
-                <input
-                  type="number"
-                  defaultValue={500000}
-                  className={inputClass}
-                />
+                <input type="number" defaultValue={500000} className={inputClass} />
               </Field>
               <Field label="Hoàn cọc sau">
                 <select defaultValue="3" className={inputClass}>
@@ -88,18 +76,20 @@ export default function AdminSettingsPage() {
               </Field>
             </>
           )}
-          {tab === "rules" && (
+
+          {tab === 'rules' && (
             <Field label="Luật mẫu áp dụng cho giải đấu mới" full>
               <textarea
                 rows={10}
                 defaultValue={
-                  "1. Ngựa phải có giấy chứng nhận sức khỏe hợp lệ.\n2. Jockey phải có chứng chỉ FIA.\n3. Kiểm tra doping bắt buộc.\n4. Tiền cọc được hoàn sau khi giải kết thúc."
+                  '1. Ngựa phải có giấy chứng nhận sức khỏe hợp lệ.\n2. Jockey phải có chứng chỉ FIA.\n3. Kiểm tra doping bắt buộc.\n4. Tiền cọc được hoàn sau khi giải kết thúc.'
                 }
                 className={`${inputClass} h-auto resize-none py-4`}
               />
             </Field>
           )}
-          {tab === "email" && (
+
+          {tab === 'email' && (
             <>
               <Field label="Mẫu mở đăng ký" full>
                 <input
@@ -121,7 +111,8 @@ export default function AdminSettingsPage() {
               </Field>
             </>
           )}
-          {tab === "security" && (
+
+          {tab === 'security' && (
             <>
               <Field label="Xác thực 2 yếu tố">
                 <select defaultValue="admin" className={inputClass}>
@@ -135,13 +126,11 @@ export default function AdminSettingsPage() {
               </Field>
             </>
           )}
-          {tab === "brand" && (
+
+          {tab === 'brand' && (
             <>
               <Field label="Tên hệ thống">
-                <input
-                  defaultValue="Horse Racing Admin"
-                  className={inputClass}
-                />
+                <input defaultValue="Horse Racing Admin" className={inputClass} />
               </Field>
               <Field label="Màu chính">
                 <input defaultValue="#D4A017" className={inputClass} />
@@ -149,6 +138,7 @@ export default function AdminSettingsPage() {
             </>
           )}
         </div>
+
         <div className="flex justify-end gap-3 px-6 pb-6">
           <button
             type="button"
@@ -165,5 +155,6 @@ export default function AdminSettingsPage() {
         </div>
       </section>
     </AdminLayout>
-  );
+  )
 }
+

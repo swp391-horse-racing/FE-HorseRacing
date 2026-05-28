@@ -1,83 +1,72 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  CalendarDays,
-  Edit,
-  Newspaper,
-  Plus,
-  Search,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
-import { toast } from "sonner";
-import AdminLayout from "@/components/admin/AdminLayout";
-import { PrimaryLink } from "@/components/admin/ui/AdminButton";
-import { newsApi } from "@/api/newsApi";
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { CalendarDays, Edit, Newspaper, Plus, Search, Sparkles, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import AdminLayout from '@/components/admin/AdminLayout'
+import { PrimaryLink } from '@/components/admin/ui/AdminButton'
+import { newsService } from '@/services/newsService'
 
 function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return new Date(dateString).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 export default function AdminNewsPage() {
-  const [news, setNews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [news, setNews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
+
   const loadNews = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await newsApi.getAllNews({ search, admin: true });
-      setNews(response.data);
+      setLoading(true)
+      const response = await newsService.getAllNews({ search, admin: true })
+      setNews(response.data)
     } catch (error) {
-      console.error("Error loading admin news:", error);
-      toast.error("Không thể tải tin tức.");
-      setNews([]);
+      console.error('Error loading admin news:', error)
+      toast.error('Không thể tải tin tức. Hãy đăng nhập admin và kiểm tra backend.')
+      setNews([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [search]);
+  }, [search])
+
   useEffect(() => {
-    loadNews();
-  }, [loadNews]);
-  const filteredNews = useMemo(
-    () => (filter === "featured" ? news.filter((item) => item.featured) : news),
-    [news, filter],
-  );
+    loadNews()
+  }, [loadNews])
+
+  const filteredNews = useMemo(() => {
+    if (filter === 'featured') return news.filter((item) => item.featured)
+    return news
+  }, [news, filter])
+
   const handleDelete = async (id, title) => {
-    if (!window.confirm(`Xóa bài viết "${title}"?`)) return;
+    if (!window.confirm(`Xóa bài viết "${title}"? Hành động này không thể hoàn tác.`)) return
+
     try {
-      await newsApi.deleteNews(id);
-      toast.success("Xóa bài viết thành công");
-      loadNews();
+      await newsService.deleteNews(id)
+      toast.success('Xóa bài viết thành công')
+      loadNews()
     } catch (error) {
-      console.error(error);
-      toast.error("Không thể xóa bài viết");
+      console.error(error)
+      toast.error('Không thể xóa bài viết')
     }
-  };
+  }
+
   const stats = [
+    { label: 'Tổng bài viết', value: news.length, icon: Newspaper, tone: 'text-[#dda50e] bg-[#dda50e]/15' },
+    { label: 'Đã xuất bản', value: news.length, icon: Sparkles, tone: 'text-emerald-300 bg-emerald-500/15' },
     {
-      label: "Tổng bài viết",
-      value: news.length,
-      icon: Newspaper,
-      tone: "text-[#dda50e] bg-[#dda50e]/15",
-    },
-    {
-      label: "Đã xuất bản",
-      value: news.length,
-      icon: Sparkles,
-      tone: "text-emerald-300 bg-emerald-500/15",
-    },
-    {
-      label: "Tin nổi bật",
+      label: 'Tin nổi bật',
       value: news.filter((item) => item.featured).length,
       icon: CalendarDays,
-      tone: "text-sky-300 bg-sky-500/15",
+      tone: 'text-sky-300 bg-sky-500/15',
     },
-  ];
+  ]
+
   return (
     <AdminLayout
       heading="Tin tức"
@@ -91,23 +80,19 @@ export default function AdminNewsPage() {
     >
       <section className="mb-8 grid gap-5 md:grid-cols-3">
         {stats.map((item) => {
-          const Icon = item.icon;
+          const Icon = item.icon
           return (
-            <div
-              key={item.label}
-              className="rounded-3xl border border-white/10 bg-white/[0.045] p-6"
-            >
-              <div
-                className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${item.tone}`}
-              >
+            <div key={item.label} className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
+              <div className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${item.tone}`}>
                 <Icon className="h-7 w-7" />
               </div>
               <p className="text-3xl font-bold">{item.value}</p>
               <p className="mt-2 text-sm text-white/50">{item.label}</p>
             </div>
-          );
+          )
         })}
       </section>
+
       <section className="mb-8 rounded-3xl border border-white/10 bg-white/[0.045] p-6">
         <div className="flex flex-col gap-4 lg:flex-row">
           <label className="relative flex-1">
@@ -119,6 +104,7 @@ export default function AdminNewsPage() {
               className="h-14 w-full rounded-2xl border border-white/10 bg-white/[0.04] pl-14 pr-4 text-white outline-none placeholder:text-white/30 focus:border-[#dda50e]/60"
             />
           </label>
+
           <select
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
@@ -129,6 +115,7 @@ export default function AdminNewsPage() {
           </select>
         </div>
       </section>
+
       <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045]">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1000px]">
@@ -145,28 +132,19 @@ export default function AdminNewsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-10 text-center text-white/50"
-                  >
+                  <td colSpan={6} className="px-6 py-10 text-center text-white/50">
                     Đang tải dữ liệu tin tức...
                   </td>
                 </tr>
               ) : filteredNews.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-10 text-center text-white/50"
-                  >
+                  <td colSpan={6} className="px-6 py-10 text-center text-white/50">
                     Không có bài viết phù hợp.
                   </td>
                 </tr>
               ) : (
                 filteredNews.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-b border-white/5 align-top text-white/70 last:border-0"
-                  >
+                  <tr key={item.id} className="border-b border-white/5 align-top text-white/70 last:border-0">
                     <td className="px-6 py-5">
                       <div className="flex gap-4">
                         <img
@@ -175,9 +153,7 @@ export default function AdminNewsPage() {
                           className="h-16 w-24 rounded-xl border border-white/10 object-cover"
                         />
                         <div className="min-w-0">
-                          <p className="line-clamp-2 font-semibold text-white">
-                            {item.title}
-                          </p>
+                          <p className="line-clamp-2 font-semibold text-white">{item.title}</p>
                           <p className="mt-1 line-clamp-2 text-sm text-white/45">
                             {item.shortDescription}
                           </p>
@@ -192,9 +168,13 @@ export default function AdminNewsPage() {
                     <td className="px-6 py-5">{item.author}</td>
                     <td className="px-6 py-5">
                       <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${item.featured ? "border-[#dda50e]/35 bg-[#dda50e]/15 text-[#efbb2c]" : "border-emerald-400/35 bg-emerald-500/15 text-emerald-300"}`}
+                        className={`inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${
+                          item.featured
+                            ? 'border-[#dda50e]/35 bg-[#dda50e]/15 text-[#efbb2c]'
+                            : 'border-emerald-400/35 bg-emerald-500/15 text-emerald-300'
+                        }`}
                       >
-                        {item.featured ? "Nổi bật" : "Đã xuất bản"}
+                        {item.featured ? 'Nổi bật' : 'Đã xuất bản'}
                       </span>
                     </td>
                     <td className="px-6 py-5">{formatDate(item.createdAt)}</td>
@@ -225,5 +205,5 @@ export default function AdminNewsPage() {
         </div>
       </section>
     </AdminLayout>
-  );
+  )
 }
