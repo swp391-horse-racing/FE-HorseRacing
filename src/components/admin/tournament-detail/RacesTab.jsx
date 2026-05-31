@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   Award,
   Crown,
@@ -19,6 +20,8 @@ import Field from '@/components/admin/ui/Field'
 import { Input, Select, TextArea } from '@/components/admin/ui/Input'
 import { PanelActions, PanelHeader, SimpleTable } from '@/components/admin/ui/Panel'
 import { primaryButton } from '@/components/admin/ui/styles'
+import { tournamentService } from '@/services/tournamentService'
+import { getApiErrorMessage } from '@/utils/apiError'
 import {
   formatVnd,
   getTotalPrize,
@@ -30,6 +33,7 @@ import {
 export default function RacesTab({ tournament, setTournament }) {
   const [selectedId, setSelectedId] = useState(tournament.races[0]?.id)
   const [panel, setPanel] = useState('info')
+  const [saving, setSaving] = useState(false)
   const selected = tournament.races.find((race) => race.id === selectedId) ?? tournament.races[0]
 
   const updateRace = (patch) => {
@@ -57,6 +61,20 @@ export default function RacesTab({ tournament, setTournament }) {
     const nextRaces = tournament.races.filter((race) => race.id !== selected.id)
     setTournament({ ...tournament, races: nextRaces })
     setSelectedId(nextRaces[0]?.id)
+  }
+
+  const saveRaces = async () => {
+    try {
+      setSaving(true)
+      const response = await tournamentService.replaceTournamentRaces(tournament.id, tournament.races)
+      setTournament(response.data)
+      setSelectedId(response.data.races[0]?.id)
+      toast.success('Đã lưu cấu hình cuộc đua')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error) || 'Không thể lưu cấu hình cuộc đua')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!selected) {
@@ -172,8 +190,8 @@ export default function RacesTab({ tournament, setTournament }) {
           </div>
         </Card>
 
-        {panel === 'info' && <RaceInfo race={selected} updateRace={updateRace} />}
-        {panel === 'prizes' && <RacePrizes race={selected} updateRace={updateRace} />}
+        {panel === 'info' && <RaceInfo race={selected} saving={saving} onSave={saveRaces} updateRace={updateRace} />}
+        {panel === 'prizes' && <RacePrizes race={selected} saving={saving} onSave={saveRaces} updateRace={updateRace} />}
         {panel === 'registrations' && <RaceRegistrations race={selected} />}
         {panel === 'gates' && <RaceGates race={selected} />}
         {panel === 'race-results' && <RaceResults race={selected} />}
@@ -182,7 +200,7 @@ export default function RacesTab({ tournament, setTournament }) {
   )
 }
 
-function RaceInfo({ race, updateRace }) {
+function RaceInfo({ race, saving, onSave, updateRace }) {
   return (
     <Card>
       <PanelHeader
@@ -234,9 +252,18 @@ function RaceInfo({ race, updateRace }) {
             <option>Open</option>
           </Select>
         </Field>
+        <Field label="Tối thiểu ngựa">
+          <Input
+            type="number"
+            min="1"
+            value={race.minHorses}
+            onChange={(event) => updateRace({ minHorses: Number(event.target.value) })}
+          />
+        </Field>
         <Field label="Tối đa ngựa">
           <Input
             type="number"
+            min="1"
             value={race.maxHorses}
             onChange={(event) => updateRace({ maxHorses: Number(event.target.value) })}
           />
@@ -258,12 +285,12 @@ function RaceInfo({ race, updateRace }) {
           </Select>
         </Field>
       </div>
-      <PanelActions />
+      <PanelActions saving={saving} onSave={onSave} />
     </Card>
   )
 }
 
-function RacePrizes({ race, updateRace }) {
+function RacePrizes({ race, saving, onSave, updateRace }) {
   const items = [
     { key: 'first', label: 'Vô địch', icon: Crown, color: 'text-[#dda50e]' },
     { key: 'second', label: 'Á quân', icon: Medal, color: 'text-white' },
@@ -298,6 +325,7 @@ function RacePrizes({ race, updateRace }) {
             )
           })}
         </div>
+        <PanelActions saving={saving} onSave={onSave} />
       </Card>
       <Card className="h-fit p-6">
         <h3 className="text-lg font-bold">Tổng giải thưởng</h3>
