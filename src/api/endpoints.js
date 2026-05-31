@@ -24,6 +24,7 @@ export const ENDPOINTS = {
     adminById: (id) => `/admin/tournaments/${id}`,
     adminBanners: '/admin/tournament-banners',
     adminStatus: (id) => `/admin/tournaments/${id}/status`,
+    adminRaces: (id) => `/admin/tournaments/${id}/races`,
     publicList: '/tournaments',
     publicById: (id) => `/tournaments/${id}`,
   },
