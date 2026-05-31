@@ -1,4 +1,5 @@
 import axiosClient from '@/api/axiosClient'
+import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
 
 const FALLBACK_THUMBNAIL =
@@ -58,15 +59,15 @@ function applyFilters(items, params = {}) {
 export const newsService = {
   async getAllNews(params = {}) {
     const list = params.admin
-      ? await axiosClient.get('/admin/news').then(unwrapResponse)
-      : await axiosClient.get('/news/all').then(unwrapResponse)
+      ? await axiosClient.get(ENDPOINTS.news.adminList).then(unwrapResponse)
+      : await axiosClient.get(ENDPOINTS.news.all).then(unwrapResponse)
 
     const mapped = (Array.isArray(list) ? list : []).map(mapNewsArticle).filter(Boolean)
     return { data: applyFilters(mapped, params) }
   },
 
   async getNewsById(id) {
-    const article = await axiosClient.get(`/news/${id}`).then(unwrapResponse)
+    const article = await axiosClient.get(ENDPOINTS.news.byId(id)).then(unwrapResponse)
     const mapped = mapNewsArticle(article)
     if (!mapped) throw new Error('News not found')
     return { data: mapped }
@@ -74,7 +75,7 @@ export const newsService = {
 
   async getFeaturedNews(limit = 3) {
     const list = await axiosClient
-      .get('/news', { params: { featured: true } })
+      .get(ENDPOINTS.news.list, { params: { featured: true } })
       .then(unwrapResponse)
 
     const mapped = (Array.isArray(list) ? list : []).map(mapNewsArticle).filter(Boolean)
@@ -82,12 +83,12 @@ export const newsService = {
   },
 
   async getRelatedNews(newsId, limit = 3) {
-    const current = await axiosClient.get(`/news/${newsId}`).then(unwrapResponse)
+    const current = await axiosClient.get(ENDPOINTS.news.byId(newsId)).then(unwrapResponse)
     const category = current?.category
 
     const list = category
-      ? await axiosClient.get('/news', { params: { category } }).then(unwrapResponse)
-      : await axiosClient.get('/news/all').then(unwrapResponse)
+      ? await axiosClient.get(ENDPOINTS.news.list, { params: { category } }).then(unwrapResponse)
+      : await axiosClient.get(ENDPOINTS.news.all).then(unwrapResponse)
 
     const mapped = (Array.isArray(list) ? list : [])
       .map(mapNewsArticle)
@@ -97,7 +98,7 @@ export const newsService = {
   },
 
   async getAdminNewsById(id) {
-    const article = await axiosClient.get(`/admin/news/${id}`).then(unwrapResponse)
+    const article = await axiosClient.get(ENDPOINTS.news.adminById(id)).then(unwrapResponse)
     const mapped = mapNewsArticle(article)
     if (!mapped) throw new Error('News not found')
     return { data: mapped }
@@ -118,12 +119,12 @@ export const newsService = {
       formData.append('data', new Blob([JSON.stringify(body)], { type: 'application/json' }))
       formData.append('image', imageFile)
       const article = await axiosClient
-        .post('/admin/news', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .post(ENDPOINTS.news.adminList, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
         .then(unwrapResponse)
       return { data: mapNewsArticle(article) }
     }
 
-    const article = await axiosClient.post('/admin/news', body).then(unwrapResponse)
+    const article = await axiosClient.post(ENDPOINTS.news.adminList, body).then(unwrapResponse)
     return { data: mapNewsArticle(article) }
   },
 
@@ -141,16 +142,16 @@ export const newsService = {
       formData.append('data', new Blob([JSON.stringify(body)], { type: 'application/json' }))
       formData.append('image', imageFile)
       const article = await axiosClient
-        .put(`/admin/news/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .put(ENDPOINTS.news.adminById(id), formData, { headers: { 'Content-Type': 'multipart/form-data' } })
         .then(unwrapResponse)
       return { data: mapNewsArticle(article) }
     }
 
-    const article = await axiosClient.put(`/admin/news/${id}`, body).then(unwrapResponse)
+    const article = await axiosClient.put(ENDPOINTS.news.adminById(id), body).then(unwrapResponse)
     return { data: mapNewsArticle(article) }
   },
 
   async deleteNews(id) {
-    await axiosClient.delete(`/admin/news/${id}`).then(unwrapResponse)
+    await axiosClient.delete(ENDPOINTS.news.adminById(id)).then(unwrapResponse)
   },
 }
