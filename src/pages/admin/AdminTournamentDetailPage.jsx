@@ -1,5 +1,6 @@
-﻿import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { Trophy } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Card from '@/components/admin/ui/Card'
 import {
@@ -12,24 +13,49 @@ import {
   TournamentHero,
   detailTabs,
 } from '@/components/admin/tournament-detail'
-import { detailTournaments } from '@/data/admin/tournamentMocks'
 import { getTotalPrize } from '@/components/admin/tournament-detail/utils'
+import { tournamentService } from '@/services/tournamentService'
 
 export default function AdminTournamentDetailPage() {
   const { id = '' } = useParams()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const createdTournament = location.state?.tournament
-  const source =
-    createdTournament?.id === id
-      ? createdTournament
-      : detailTournaments[id] ?? detailTournaments['vietnam-grand-prix-2026']
-  const [tournament, setTournament] = useState(source)
+  const [tournament, setTournament] = useState(createdTournament?.id === id ? createdTournament : null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const selectedTab = detailTabs.some((tab) => tab.key === searchParams.get('tab'))
     ? searchParams.get('tab')
     : 'overview'
-  const totalRegistered = tournament.races.reduce((sum, race) => sum + race.registered, 0)
-  const totalPrize = tournament.races.reduce((sum, race) => sum + getTotalPrize(race), 0)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadTournament() {
+      try {
+        setLoading(true)
+        setError('')
+        const response = await tournamentService.getAdminTournament(id)
+        if (!cancelled) setTournament(response.data)
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(
+            requestError?.response?.data?.message ||
+              requestError?.message ||
+              'Không thể tải chi tiết giải đấu.',
+          )
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadTournament()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
 
   const changeTab = (tab) => {
     const next = new URLSearchParams(searchParams)
@@ -37,6 +63,28 @@ export default function AdminTournamentDetailPage() {
     else next.set('tab', tab)
     setSearchParams(next)
   }
+
+  if (loading) {
+    return (
+      <AdminLayout showPageHeader={false}>
+        <Card className="mt-10 p-16 text-center text-white/55">Đang tải chi tiết giải đấu...</Card>
+      </AdminLayout>
+    )
+  }
+
+  if (error || !tournament) {
+    return (
+      <AdminLayout showPageHeader={false}>
+        <Card className="mt-10 p-16 text-center text-red-200">
+          <Trophy className="mx-auto mb-4 h-12 w-12" />
+          {error || 'Không tìm thấy giải đấu.'}
+        </Card>
+      </AdminLayout>
+    )
+  }
+
+  const totalRegistered = tournament.races.reduce((sum, race) => sum + Number(race.registered ?? 0), 0)
+  const totalPrize = tournament.races.reduce((sum, race) => sum + getTotalPrize(race), 0)
 
   return (
     <AdminLayout showPageHeader={false}>
@@ -70,9 +118,7 @@ export default function AdminTournamentDetailPage() {
       {selectedTab === 'participants' && <ParticipantsTab tournament={tournament} />}
       {selectedTab === 'schedule' && <ScheduleTab tournament={tournament} />}
       {selectedTab === 'results' && <ResultsTab tournament={tournament} />}
-      {selectedTab === 'settings' && (
-        <SettingsTab tournament={tournament} setTournament={setTournament} />
-      )}
+      {selectedTab === 'settings' && <SettingsTab tournament={tournament} setTournament={setTournament} />}
     </AdminLayout>
   )
 }

@@ -24,18 +24,20 @@ export function PanelHeader({ icon: Icon, title, subtitle }) {
   )
 }
 
-export function PanelActions() {
+export function PanelActions({ saving = false, onCancel, onSave } = {}) {
   return (
     <div className="flex justify-end gap-3 p-6 pt-0">
       <button
         type="button"
+        onClick={onCancel}
+        disabled={saving}
         className="rounded-xl border border-white/10 px-6 py-3 font-semibold text-white/70"
       >
         Hủy
       </button>
-      <button type="button" className={primaryButton}>
+      <button type="button" disabled={saving} onClick={onSave} className={primaryButton}>
         <Save className="h-5 w-5" />
-        Lưu thay đổi
+        {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
       </button>
     </div>
   )
