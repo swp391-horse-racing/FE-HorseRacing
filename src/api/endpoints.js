@@ -28,15 +28,11 @@ export const ENDPOINTS = {
     publicList: '/tournaments',
     publicById: (id) => `/tournaments/${id}`,
   },
-  /** Ví dụ domain service — thay path khi có module blood-donation thật */
-  blood: {
-    list: '/blood-records',
-    byId: (id) => `/blood-records/${id}`,
-  },
   news: {
+    list: '/news',
     all: '/news/all',
-    featured: '/news/featured',
     byId: (id) => `/news/${id}`,
-    related: (id) => `/news/${id}/related`,
+    adminList: '/admin/news',
+    adminById: (id) => `/admin/news/${id}`,
   },
 }
