@@ -218,6 +218,14 @@ export const tournamentService = {
     return { data: mapTournament(tournament), raw: tournament }
   },
 
+  async updateTournament(id, payload) {
+    const tournament = await axiosClient
+      .put(ENDPOINTS.tournaments.adminById(id), payload)
+      .then(unwrapResponse)
+
+    return { data: mapTournament(tournament), raw: tournament }
+  },
+
   async updateTournamentStatus(id, status) {
     const tournament = await axiosClient
       .put(ENDPOINTS.tournaments.adminStatus(id), null, { params: { status } })
