@@ -25,7 +25,6 @@ import { getApiErrorMessage } from '@/utils/apiError'
 import {
   formatVnd,
   getPrizeAmountByRank,
-  getTotalPrize,
   normalizePrizeList,
   registrationsFor,
   resultsFor,
@@ -38,13 +37,6 @@ export default function RacesTab({ tournament, setTournament }) {
   const [saving, setSaving] = useState(false)
   const selected = tournament.races.find((race) => race.id === selectedId) ?? tournament.races[0]
 
-  const updateRace = (patch) => {
-    setTournament({
-      ...tournament,
-      races: tournament.races.map((race) => (race.id === selected.id ? { ...race, ...patch } : race)),
-    })
-  }
-
   const addRace = () => {
     const no = tournament.races.length + 1
     const race = {
@@ -53,9 +45,6 @@ export default function RacesTab({ tournament, setTournament }) {
       no,
       name: `Cuộc đua ${no}`,
       date: tournament.startDate,
-      registrationOpenDate: shiftDate(tournament.startDate, -2),
-      registrationCloseDate: shiftDate(tournament.startDate, -1),
-      regDeadline: shiftDate(tournament.startDate, -1),
     }
     setTournament({ ...tournament, races: [...tournament.races, race] })
     setSelectedId(race.id)
@@ -67,18 +56,41 @@ export default function RacesTab({ tournament, setTournament }) {
     setSelectedId(nextRaces[0]?.id)
   }
 
-  const saveRaces = async () => {
+  const saveRaces = async (nextRacesOrEvent = tournament.races, nextSelectedId = selectedId) => {
+    const nextRaces = Array.isArray(nextRacesOrEvent) ? nextRacesOrEvent : tournament.races
+    if (!['DRAFT', 'PUBLISHED'].includes(tournament.statusCode)) {
+      toast.error('Chỉ có thể lưu cấu hình cuộc đua khi giải đấu ở trạng thái Nháp hoặc Đã công bố')
+      return
+    }
+
+    const validationError = getRaceValidationError(nextRaces, tournament)
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
+
     try {
       setSaving(true)
-      const response = await tournamentService.replaceTournamentRaces(tournament.id, tournament.races)
+      const response = await tournamentService.replaceTournamentRaces(tournament.id, nextRaces)
       setTournament(response.data)
-      setSelectedId(response.data.races[0]?.id)
+      setSelectedId(response.data.races.find((race) => race.id === nextSelectedId)?.id ?? response.data.races[0]?.id)
       toast.success('Đã lưu cấu hình cuộc đua')
     } catch (error) {
+      console.error('Không thể lưu cấu hình cuộc đua', error?.response?.data || error)
       toast.error(getApiErrorMessage(error) || 'Không thể lưu cấu hình cuộc đua')
     } finally {
       setSaving(false)
     }
+  }
+
+  const saveRaceInfo = (draft) => {
+    const nextRaces = tournament.races.map((race) => (race.id === selected.id ? { ...race, ...draft } : race))
+    return saveRaces(nextRaces, selected.id)
+  }
+
+  const saveRacePrizes = (prizes) => {
+    const nextRaces = tournament.races.map((race) => (race.id === selected.id ? { ...race, prizes } : race))
+    return saveRaces(nextRaces, selected.id)
   }
 
   if (!selected) {
@@ -196,14 +208,16 @@ export default function RacesTab({ tournament, setTournament }) {
 
         {panel === 'info' && (
           <RaceInfo
+            key={selected.id}
             race={selected}
             tournament={tournament}
             saving={saving}
-            onSave={saveRaces}
-            updateRace={updateRace}
+            onSave={saveRaceInfo}
           />
         )}
-        {panel === 'prizes' && <RacePrizes race={selected} saving={saving} onSave={saveRaces} updateRace={updateRace} />}
+        {panel === 'prizes' && (
+          <RacePrizes key={`${selected.id}-prizes`} race={selected} saving={saving} onSave={saveRacePrizes} />
+        )}
         {panel === 'registrations' && <RaceRegistrations race={selected} />}
         {panel === 'gates' && <RaceGates race={selected} />}
         {panel === 'race-results' && <RaceResults race={selected} />}
@@ -212,14 +226,12 @@ export default function RacesTab({ tournament, setTournament }) {
   )
 }
 
-function shiftDate(date, days) {
-  if (!date) return ''
+function shiftTime(time, hours) {
+  if (!time) return ''
 
-  const [year, month, day] = date.split('-').map(Number)
-  if (!year || !month || !day) return ''
-
-  const next = new Date(Date.UTC(year, month - 1, day + days))
-  return next.toISOString().slice(0, 10)
+  const [hour = '00', minute = '00'] = time.split(':')
+  const nextHour = Math.max(0, Math.min(23, Number(hour) + hours))
+  return `${String(nextHour).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`
 }
 
 function clampDate(date, min, max) {
@@ -229,26 +241,72 @@ function clampDate(date, min, max) {
   return date
 }
 
-function normalizeRegistrationDates(openDate, closeDate, raceDate) {
-  const latestOpenDate = shiftDate(raceDate, -2)
-  const latestCloseDate = shiftDate(raceDate, -1)
-  const registrationOpenDate = clampDate(openDate, '', latestOpenDate)
-  const earliestCloseDate = shiftDate(registrationOpenDate, 1)
-  const registrationCloseDate = clampDate(closeDate, earliestCloseDate, latestCloseDate)
-
-  return {
-    registrationOpenDate,
-    registrationCloseDate:
-      earliestCloseDate && latestCloseDate && earliestCloseDate > latestCloseDate ? '' : registrationCloseDate,
-  }
+function clampTime(time, min, max) {
+  if (!time) return ''
+  if (min && time < min) return min
+  if (max && time > max) return max
+  return time
 }
 
-function RaceInfo({ race, tournament, saving, onSave, updateRace }) {
+function toDateTimeValue(date, time = '08:00') {
+  return `${date}T${time || '08:00'}`
+}
+
+function addOneHourDateTimeValue(date, time = '08:00') {
+  if (!date) return ''
+
+  const [hours = '08', minutes = '00'] = time.split(':')
+  const start = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)), Number(hours), Number(minutes)))
+  start.setUTCHours(start.getUTCHours() + 1)
+
+  return start.toISOString().slice(0, 16)
+}
+
+function getRaceValidationError(races, tournament) {
+  const tournamentStart = toDateTimeValue(tournament.startDate, tournament.startTime || '00:00')
+  const tournamentEnd = toDateTimeValue(tournament.endDate, tournament.endTime || '23:59')
+  const keys = new Set()
+
+  for (const race of races) {
+    const raceName = race.name?.trim()
+    const raceDistance = race.distance?.trim()
+    const raceStart = toDateTimeValue(race.date, race.time)
+    const raceEnd = addOneHourDateTimeValue(race.date, race.time)
+    const raceKey = `${raceName?.toLowerCase()}|${raceStart}`
+    const prizeRanks = new Set()
+
+    if (!raceName) return 'Tên cuộc đua không được để trống'
+    if (raceName.length > 120) return 'Tên cuộc đua tối đa 120 ký tự'
+    if (!raceDistance) return 'Khoảng cách cuộc đua không được để trống'
+    if (raceDistance.length > 80) return 'Khoảng cách tối đa 80 ký tự'
+    if ((race.description || '').length > 1000) return 'Mô tả cuộc đua tối đa 1000 ký tự'
+    if (!race.date || !race.time) return 'Ngày và giờ thi đấu không được để trống'
+    if (raceStart < tournamentStart || raceEnd > tournamentEnd) return 'Lịch thi đấu phải nằm trong thời gian mùa giải'
+    if (Number(race.minHorses) <= 0 || Number(race.maxHorses) <= 0) return 'Giới hạn ngựa phải lớn hơn 0'
+    if (Number(race.minHorses) > Number(race.maxHorses)) return 'Tối thiểu ngựa không được lớn hơn tối đa ngựa'
+    if (keys.has(raceKey)) return 'Tên cuộc đua và giờ thi đấu không được trùng nhau trong cùng giải'
+
+    for (const prize of normalizePrizeList(race.prizes)) {
+      if (prize.rank <= 0) return 'Hạng giải thưởng phải lớn hơn 0'
+      if (prizeRanks.has(prize.rank)) return 'Hạng giải thưởng không được trùng nhau trong cùng cuộc đua'
+      prizeRanks.add(prize.rank)
+    }
+
+    keys.add(raceKey)
+  }
+
+  return ''
+}
+
+function RaceInfo({ race, tournament, saving, onSave }) {
+  const [draft, setDraft] = useState(race)
+  const updateDraft = (patch) => {
+    setDraft((previous) => ({ ...previous, ...patch }))
+  }
   const raceDateMin = tournament.startDate || undefined
   const raceDateMax = tournament.endDate || undefined
-  const registrationOpenMax = shiftDate(race.date, -2)
-  const registrationCloseMin = shiftDate(race.registrationOpenDate, 1)
-  const registrationCloseMax = shiftDate(race.date, -1)
+  const raceTimeMin = draft.date === tournament.startDate ? tournament.startTime || undefined : undefined
+  const raceTimeMax = draft.date === tournament.endDate ? shiftTime(tournament.endTime, -1) || undefined : undefined
 
   return (
     <Card>
@@ -259,19 +317,19 @@ function RaceInfo({ race, tournament, saving, onSave, updateRace }) {
       />
       <div className="grid gap-5 p-6 md:grid-cols-2">
         <Field label="Tên cuộc đua">
-          <Input value={race.name} onChange={(event) => updateRace({ name: event.target.value })} />
+          <Input value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} />
         </Field>
         <Field label="Số thứ tự">
           <Input
             type="number"
-            value={race.no}
-            onChange={(event) => updateRace({ no: Number(event.target.value) })}
+            value={draft.no}
+            onChange={(event) => updateDraft({ no: Number(event.target.value) })}
           />
         </Field>
         <Field label="Mô tả" full>
           <TextArea
-            value={race.description}
-            onChange={(event) => updateRace({ description: event.target.value })}
+            value={draft.description}
+            onChange={(event) => updateDraft({ description: event.target.value })}
           />
         </Field>
         <Field label="Ngày thi đấu">
@@ -279,19 +337,15 @@ function RaceInfo({ race, tournament, saving, onSave, updateRace }) {
             type="date"
             min={raceDateMin}
             max={raceDateMax}
-            value={race.date}
+            value={draft.date}
             onChange={(event) => {
               const date = clampDate(event.target.value, tournament.startDate, tournament.endDate)
-              const normalized = normalizeRegistrationDates(
-                race.registrationOpenDate,
-                race.registrationCloseDate || race.regDeadline,
-                date,
-              )
+              const nextRaceTimeMin = date === tournament.startDate ? tournament.startTime : ''
+              const nextRaceTimeMax = date === tournament.endDate ? shiftTime(tournament.endTime, -1) : ''
 
-              updateRace({
+              updateDraft({
                 date,
-                ...normalized,
-                regDeadline: normalized.registrationCloseDate,
+                time: clampTime(draft.time, nextRaceTimeMin, nextRaceTimeMax),
               })
             }}
           />
@@ -300,61 +354,34 @@ function RaceInfo({ race, tournament, saving, onSave, updateRace }) {
           </p>
         </Field>
         <Field label="Giờ thi đấu">
-          <Input type="time" value={race.time} onChange={(event) => updateRace({ time: event.target.value })} />
-        </Field>
-        <Field label="Ngày mở đăng ký">
           <Input
-            type="date"
-            max={registrationOpenMax || undefined}
-            value={race.registrationOpenDate || ''}
-            onChange={(event) => {
-              const registrationOpenDate = clampDate(event.target.value, '', registrationOpenMax)
-              const normalized = normalizeRegistrationDates(
-                registrationOpenDate,
-                race.registrationCloseDate || race.regDeadline,
-                race.date,
-              )
-
-              updateRace({
-                ...normalized,
-                regDeadline: normalized.registrationCloseDate,
-              })
-            }}
+            type="time"
+            min={raceTimeMin}
+            max={raceTimeMax}
+            value={draft.time}
+            onChange={(event) => updateDraft({ time: clampTime(event.target.value, raceTimeMin, raceTimeMax) })}
           />
-          <p className="mt-2 text-xs text-white/40">Phải trước ngày thi đấu ít nhất 2 ngày.</p>
-        </Field>
-        <Field label="Ngày kết thúc đăng ký">
-          <Input
-            type="date"
-            min={registrationCloseMin || undefined}
-            max={registrationCloseMax || undefined}
-            value={race.registrationCloseDate || race.regDeadline || ''}
-            onChange={(event) => {
-              const registrationCloseDate = clampDate(event.target.value, registrationCloseMin, registrationCloseMax)
-
-              updateRace({
-                registrationCloseDate,
-                regDeadline: registrationCloseDate,
-              })
-            }}
-          />
-          <p className="mt-2 text-xs text-white/40">Phải sau ngày mở đăng ký và trước ngày thi đấu.</p>
+          {(raceTimeMin || raceTimeMax) && (
+            <p className="mt-2 text-xs text-white/40">
+              Giờ thi đấu trong ngày này: {raceTimeMin || '00:00'} - {raceTimeMax || '23:59'}.
+            </p>
+          )}
         </Field>
         <Field label="Khoảng cách">
-          <Input value={race.distance} onChange={(event) => updateRace({ distance: event.target.value })} />
+          <Input value={draft.distance} onChange={(event) => updateDraft({ distance: event.target.value })} />
         </Field>
         <Field label="Đường đua">
-          <Input value={race.track} onChange={(event) => updateRace({ track: event.target.value })} />
+          <Input value={draft.track} onChange={(event) => updateDraft({ track: event.target.value })} />
         </Field>
         <Field label="Mặt sân">
-          <Select value={race.surface} onChange={(event) => updateRace({ surface: event.target.value })}>
+          <Select value={draft.surface} onChange={(event) => updateDraft({ surface: event.target.value })}>
             <option>Cỏ</option>
             <option>Đất</option>
             <option>Tổng hợp</option>
           </Select>
         </Field>
         <Field label="Hạng đua">
-          <Select value={race.category} onChange={(event) => updateRace({ category: event.target.value })}>
+          <Select value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })}>
             <option>Hạng A</option>
             <option>Hạng B</option>
             <option>Hạng C</option>
@@ -365,27 +392,27 @@ function RaceInfo({ race, tournament, saving, onSave, updateRace }) {
           <Input
             type="number"
             min="1"
-            value={race.minHorses}
-            onChange={(event) => updateRace({ minHorses: Number(event.target.value) })}
+            value={draft.minHorses}
+            onChange={(event) => updateDraft({ minHorses: Number(event.target.value) })}
           />
         </Field>
         <Field label="Tối đa ngựa">
           <Input
             type="number"
             min="1"
-            value={race.maxHorses}
-            onChange={(event) => updateRace({ maxHorses: Number(event.target.value) })}
+            value={draft.maxHorses}
+            onChange={(event) => updateDraft({ maxHorses: Number(event.target.value) })}
           />
         </Field>
         <Field label="Lệ phí đăng ký">
           <Input
             type="number"
-            value={race.entryFee}
-            onChange={(event) => updateRace({ entryFee: Number(event.target.value) })}
+            value={draft.entryFee}
+            onChange={(event) => updateDraft({ entryFee: Number(event.target.value) })}
           />
         </Field>
         <Field label="Trạng thái" full>
-          <Select value={race.status} onChange={(event) => updateRace({ status: event.target.value })}>
+          <Select value={draft.status} onChange={(event) => updateDraft({ status: event.target.value })}>
             <option>Nháp</option>
             <option>Mở đăng ký</option>
             <option>Sắp diễn ra</option>
@@ -394,43 +421,42 @@ function RaceInfo({ race, tournament, saving, onSave, updateRace }) {
           </Select>
         </Field>
       </div>
-      <PanelActions saving={saving} onSave={onSave} />
+      <PanelActions saving={saving} onCancel={() => setDraft(race)} onSave={() => onSave(draft)} />
     </Card>
   )
 }
 
-function RacePrizes({ race, saving, onSave, updateRace }) {
-  const prizes = normalizePrizeList(race.prizes)
-  const total = getTotalPrize(race)
+function RacePrizes({ race, saving, onSave }) {
+  const [draftPrizes, setDraftPrizes] = useState(() => normalizePrizeList(race.prizes))
+  const prizes = draftPrizes
+  const total = prizes.reduce((sum, prize) => sum + Number(prize.amount || 0), 0)
   const updatePrize = (id, patch) => {
-    updateRace({
-      prizes: prizes.map((prize) => (prize.id === id ? { ...prize, ...patch } : prize)),
-    })
+    setDraftPrizes((previous) => previous.map((prize) => (prize.id === id ? { ...prize, ...patch } : prize)))
   }
   const addPrize = () => {
-    const nextRank = Math.max(0, ...prizes.map((prize) => Number(prize.rank || 0))) + 1
-    let suffix = prizes.length + 1
-    let nextId = `new-prize-${race.id}-${nextRank}-${suffix}`
+    setDraftPrizes((previous) => {
+      const nextRank = Math.max(0, ...previous.map((prize) => Number(prize.rank || 0))) + 1
+      let suffix = previous.length + 1
+      let nextId = `new-prize-${race.id}-${nextRank}-${suffix}`
 
-    while (prizes.some((prize) => prize.id === nextId)) {
-      suffix += 1
-      nextId = `new-prize-${race.id}-${nextRank}-${suffix}`
-    }
+      while (previous.some((prize) => prize.id === nextId)) {
+        suffix += 1
+        nextId = `new-prize-${race.id}-${nextRank}-${suffix}`
+      }
 
-    updateRace({
-      prizes: [
-        ...prizes,
+      return [
+        ...previous,
         {
           id: nextId,
           rank: nextRank,
           itemName: `Giải ${nextRank}`,
           amount: 0,
         },
-      ],
+      ]
     })
   }
   const removePrize = (id) => {
-    updateRace({ prizes: prizes.filter((prize) => prize.id !== id) })
+    setDraftPrizes((previous) => previous.filter((prize) => prize.id !== id))
   }
 
   return (
@@ -515,7 +541,11 @@ function RacePrizes({ race, saving, onSave, updateRace }) {
             )
           })}
         </div>
-        <PanelActions saving={saving} onSave={onSave} />
+        <PanelActions
+          saving={saving}
+          onCancel={() => setDraftPrizes(normalizePrizeList(race.prizes))}
+          onSave={() => onSave(prizes)}
+        />
       </Card>
       <Card className="h-fit overflow-hidden">
         <div className="border-b border-white/10 bg-[#dda50e]/10 p-6">
