@@ -18,7 +18,7 @@ export default function NewsPage() {
         return response.data
       } catch (error) {
         console.error('Error loading news:', error)
-        toast.error('Khong the tai tin tuc')
+        toast.error('Khong the tai danh sach tin tuc')
         return []
       }
     },
@@ -26,7 +26,7 @@ export default function NewsPage() {
       deps: [debouncedSearch],
     }
   )
-  
+
   const news = data ?? []
 
   return (
@@ -72,7 +72,7 @@ export default function NewsPage() {
       <section className="bg-gradient-to-b from-white to-[#FAFAFA] py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold text-[#1E3A5F]">Tat ca tin tuc</h2>
+            <h2 className="mb-4 text-4xl font-bold text-[#1E3A5F]">Danh sach tin tuc</h2>
             <div className="mx-auto h-1 w-24 rounded-full bg-gradient-to-r from-[#D4A017] to-[#F5E6C8]" />
           </div>
 
