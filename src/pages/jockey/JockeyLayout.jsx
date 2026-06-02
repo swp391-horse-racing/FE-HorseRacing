@@ -5,6 +5,7 @@ import {
   User,
   Mail,
   Calendar,
+  Flag,
   PawPrint,
   BarChart3,
   Trophy,
@@ -18,10 +19,11 @@ import {
   Zap,
 } from "lucide-react";
 
-export const JOCKEY_NAV = [
+const JOCKEY_NAV = [
   { label: "Dashboard", to: "/jockey", icon: LayoutDashboard },
   { label: "Hồ sơ cá nhân", to: "/jockey/profile", icon: User },
   { label: "Lời mời thi đấu", to: "/jockey/invitations", icon: Mail },
+  { label: "Giải đấu", to: "/jockey/tournaments", icon: Flag },
   { label: "Lịch thi đấu", to: "/jockey/schedules", icon: Calendar },
   { label: "Ngựa được assign", to: "/jockey/horses", icon: PawPrint },
   { label: "Kết quả thi đấu", to: "/jockey/results", icon: BarChart3 },
@@ -37,7 +39,9 @@ export function JockeyLayout({ children, title, subtitle, actions }) {
   const logout = () => {
     try {
       localStorage.removeItem("auth_user");
-    } catch {}
+    } catch {
+      // Ignore storage failures and continue logout navigation.
+    }
     navigate("/login");
   };
   const isActive = (to) =>
