@@ -2,6 +2,7 @@ import { useLocation } from "react-router-dom";
 import { JockeyDashboard } from "./JockeyDashboard";
 import { JockeyProfile } from "./JockeyProfile";
 import { JockeyInvitations } from "./JockeyInvitations";
+import { JockeyTournaments } from "./JockeyTournaments";
 import { JockeySchedules } from "./JockeySchedules";
 import { JockeyHorses } from "./JockeyHorses";
 import { JockeyResults } from "./JockeyResults";
@@ -13,6 +14,7 @@ export default function JockeyPage() {
   const { pathname } = useLocation();
   if (pathname.startsWith("/jockey/profile")) return <JockeyProfile />;
   if (pathname.startsWith("/jockey/invitations")) return <JockeyInvitations />;
+  if (pathname.startsWith("/jockey/tournaments")) return <JockeyTournaments />;
   if (pathname.startsWith("/jockey/schedules")) return <JockeySchedules />;
   if (pathname.startsWith("/jockey/horses")) return <JockeyHorses />;
   if (pathname.startsWith("/jockey/results")) return <JockeyResults />;
