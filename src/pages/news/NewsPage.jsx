@@ -23,6 +23,7 @@ export default function NewsPage() {
       }
     },
     {
+      cacheKey: `news:list:${debouncedSearch}`,
       deps: [debouncedSearch],
     }
   )

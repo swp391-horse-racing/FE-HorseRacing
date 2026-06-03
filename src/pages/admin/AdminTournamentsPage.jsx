@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -14,9 +14,13 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { PrimaryLink } from "@/components/admin/ui/AdminButton";
-import AdminLayout from "@/components/admin/AdminLayout";
-import { tournamentService } from "@/services/tournamentService";
+import { PrimaryLink } from "@/components/ui/AdminButton";
+import AdminLayout from "@/components/AdminLayout";
+import {
+  setTournamentBannerFallback,
+  tournamentService,
+} from "@/services/tournamentService";
+import { useApiCacheStore } from "@/store/apiCacheStore";
 
 const STATUS_TABS = [
   "Tất cả",
@@ -30,13 +34,17 @@ const STATUS_TABS = [
   "Đã hủy",
 ];
 
+const ADMIN_TOURNAMENTS_CACHE_KEY = "admin:tournaments";
+
 export default function AdminTournamentsPage() {
-  const [tournaments, setTournaments] = useState([]);
+  const cachedTournaments = useApiCacheStore.getState().getCache(ADMIN_TOURNAMENTS_CACHE_KEY)?.data;
+  const hasInitialCache = useRef(Boolean(cachedTournaments));
+  const [tournaments, setTournaments] = useState(cachedTournaments ?? []);
   const [status, setStatus] = useState("Tất cả");
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("latest");
   const [view, setView] = useState("grid");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedTournaments);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -44,10 +52,13 @@ export default function AdminTournamentsPage() {
 
     async function loadTournaments() {
       try {
-        setLoading(true);
+        if (!hasInitialCache.current) setLoading(true);
         setError("");
         const response = await tournamentService.getAdminTournaments();
-        if (!cancelled) setTournaments(response.data);
+        if (!cancelled) {
+          const changed = useApiCacheStore.getState().setCache(ADMIN_TOURNAMENTS_CACHE_KEY, response.data);
+          if (changed || !hasInitialCache.current) setTournaments(response.data);
+        }
       } catch (requestError) {
         if (!cancelled) {
           setError(
@@ -265,6 +276,7 @@ function TournamentCard({ tournament }) {
         <img
           src={tournament.banner}
           alt=""
+          onError={setTournamentBannerFallback}
           className="h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#111d32] via-transparent to-transparent" />
