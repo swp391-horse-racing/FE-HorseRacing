@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Settings, Trash2 } from 'lucide-react'
 import Card from '@/components/ui/Card'
@@ -6,6 +7,7 @@ import Field from '@/components/ui/Field'
 import { Input, Select, TextArea } from '@/components/ui/Input'
 import { PanelActions, PanelHeader } from '@/components/ui/Panel'
 import { tournamentService } from '@/services/tournamentService'
+import { useApiCacheStore } from '@/store/apiCacheStore'
 import { getApiErrorMessage } from '@/utils/apiError'
 
 const STATUS_OPTIONS = [
@@ -102,8 +104,10 @@ function getValidationError(draft) {
 }
 
 export default function SettingsTab({ tournament, setTournament }) {
+  const navigate = useNavigate()
   const [draft, setDraft] = useState(() => makeDraft(tournament))
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const today = getTodayDate()
   const registrationOpenMin = addDays(today, 1)
   const startDateMin = addDays(today, 7)
@@ -192,6 +196,30 @@ export default function SettingsTab({ tournament, setTournament }) {
     }
   }
 
+  const deleteTournament = async () => {
+    if (
+      !window.confirm(
+        `Xóa giải đấu "${tournament.name}"? Hành động này không thể hoàn tác.`,
+      )
+    ) {
+      return
+    }
+
+    try {
+      setDeleting(true)
+      await tournamentService.deleteTournament(tournament.id)
+      useApiCacheStore.getState().removeCache(`admin:tournament:${tournament.id}`)
+      useApiCacheStore.getState().removeCache('admin:tournaments')
+      toast.success('Đã xóa giải đấu')
+      navigate('/admin/tournaments', { replace: true })
+    } catch (error) {
+      console.error('Không thể xóa giải đấu', error?.response?.data || error)
+      toast.error(getApiErrorMessage(error) || 'Không thể xóa giải đấu')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="grid gap-7 lg:grid-cols-[1fr_300px]">
       <Card>
@@ -263,10 +291,12 @@ export default function SettingsTab({ tournament, setTournament }) {
         <p className="mb-5 text-sm text-white/55">Hành động không thể hoàn tác.</p>
         <button
           type="button"
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/15 font-semibold text-rose-300"
+          onClick={deleteTournament}
+          disabled={saving || deleting}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/15 font-semibold text-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Trash2 className="h-5 w-5" />
-          Xóa giải đấu
+          {deleting ? 'Đang xóa...' : 'Xóa giải đấu'}
         </button>
       </Card>
     </div>
