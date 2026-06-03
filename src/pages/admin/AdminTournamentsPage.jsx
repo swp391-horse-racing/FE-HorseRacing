@@ -297,6 +297,14 @@ function TournamentCard({ tournament }) {
           />
           <CardMeta
             icon={CalendarDays}
+            text={formatTournamentDate(tournament.registrationOpenDate, "Mở đăng ký")}
+          />
+          <CardMeta
+            icon={CalendarDays}
+            text={formatTournamentDate(tournament.registrationCloseDate, "Đóng đăng ký")}
+          />
+          <CardMeta
+            icon={CalendarDays}
             text={formatTournamentDate(tournament.startDate, "Bắt đầu")}
           />
           <CardMeta
@@ -304,7 +312,7 @@ function TournamentCard({ tournament }) {
             text={formatTournamentDate(tournament.endDate, "Kết thúc")}
           />
           <CardMeta icon={Flag} text={`${tournament.raceCount} cuộc đua`} />
-          <CardMeta icon={Users} text={`${tournament.registrations} đăng ký`} />
+          <CardMeta icon={Users} text={`${tournament.registrations} người đăng ký`} />
         </div>
 
         <div className="mt-5 flex items-center gap-4">
