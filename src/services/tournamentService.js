@@ -72,6 +72,12 @@ function firstPositiveEntryFee(races = []) {
   return Number(races.find((race) => Number(race?.entryFee ?? 0) > 0)?.entryFee ?? 0)
 }
 
+function countActiveRegistrations(registrations = []) {
+  return registrations.filter((registration) =>
+    ['PENDING', 'APPROVED'].includes(registration?.status),
+  ).length
+}
+
 function mapRacePrizes(prizes = []) {
   return prizes
     .filter(Boolean)
@@ -168,6 +174,7 @@ function raceRequest(race) {
     minParticipants,
     maxParticipants,
     entryFee: Math.max(0, Number(race.entryFee || 0)),
+    refereeId: race.refereeId ?? race.raw?.refereeId ?? null,
     note: race.description || '',
     prizes: racePrizeRequests(race),
   }
@@ -240,6 +247,12 @@ export const tournamentService = {
     return { data: mapTournament(tournament), raw: tournament }
   },
 
+  async deleteTournament(id) {
+    return axiosClient
+      .delete(ENDPOINTS.tournaments.adminById(id))
+      .then(unwrapResponse)
+  },
+
   async updateTournamentStatus(id, status) {
     const tournament = await axiosClient
       .put(ENDPOINTS.tournaments.adminStatus(id), null, { params: { status } })
@@ -248,9 +261,25 @@ export const tournamentService = {
     return { data: mapTournament(tournament), raw: tournament }
   },
 
-  async replaceTournamentRaces(id, races) {
+  async addTournamentRace(id, race) {
     const tournament = await axiosClient
-      .put(ENDPOINTS.tournaments.adminRaces(id), races.map(raceRequest))
+      .post(ENDPOINTS.tournaments.adminRaces(id), raceRequest(race))
+      .then(unwrapResponse)
+
+    return { data: mapTournament(tournament), raw: tournament }
+  },
+
+  async updateTournamentRace(id, race) {
+    const tournament = await axiosClient
+      .put(ENDPOINTS.tournaments.adminRaceById(id), raceRequest(race))
+      .then(unwrapResponse)
+
+    return { data: mapTournament(tournament), raw: tournament }
+  },
+
+  async deleteTournamentRace(id) {
+    const tournament = await axiosClient
+      .delete(ENDPOINTS.tournaments.adminRaceById(id))
       .then(unwrapResponse)
 
     return { data: mapTournament(tournament), raw: tournament }
@@ -261,8 +290,41 @@ export const tournamentService = {
       .get(ENDPOINTS.tournaments.adminList, { params })
       .then(unwrapResponse)
 
+    const tournaments = await Promise.all(
+      (Array.isArray(list) ? list : []).map(async (summary) => {
+        const fallback = mapTournament(summary)
+
+        const [detailResult, registrationsResult] = await Promise.allSettled([
+          axiosClient
+            .get(ENDPOINTS.tournaments.adminById(summary.id))
+            .then(unwrapResponse),
+          axiosClient
+            .get(ENDPOINTS.tournaments.adminRaceRegistrations(summary.id))
+            .then(unwrapResponse),
+        ])
+
+        const tournament =
+          detailResult.status === 'fulfilled'
+            ? mapTournament(detailResult.value)
+            : fallback
+        if (!tournament) return null
+
+        const registrations =
+          registrationsResult.status === 'fulfilled' &&
+          Array.isArray(registrationsResult.value)
+            ? countActiveRegistrations(registrationsResult.value)
+            : tournament.registrations
+
+        return {
+          ...tournament,
+          registrations,
+          registeredHorses: registrations,
+        }
+      }),
+    )
+
     return {
-      data: (Array.isArray(list) ? list : []).map(mapTournament).filter(Boolean),
+      data: tournaments.filter(Boolean),
     }
   },
 

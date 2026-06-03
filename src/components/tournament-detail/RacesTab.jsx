@@ -17,7 +17,7 @@ import { createRaces } from "@/data/admin/tournamentMocks";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import Field from "@/components/ui/Field";
-import { Input, Select, TextArea } from "@/components/ui/Input";
+import { Input, TextArea } from "@/components/ui/Input";
 import { PanelActions, PanelHeader, SimpleTable } from "@/components/ui/Panel";
 import { primaryButton } from "@/components/ui/styles";
 import { tournamentService } from "@/services/tournamentService";
@@ -48,26 +48,42 @@ export default function RacesTab({ tournament, setTournament }) {
       name: `Cuộc đua ${no}`,
       date: tournament.startDate,
       status: "Nháp",
+      isNew: true,
     };
     setTournament({ ...tournament, races: [...tournament.races, race] });
     setSelectedId(race.id);
   };
 
-  const removeRace = () => {
+  const removeRace = async () => {
     const nextRaces = tournament.races.filter(
       (race) => race.id !== selected.id,
     );
-    setTournament({ ...tournament, races: nextRaces });
-    setSelectedId(nextRaces[0]?.id);
+
+    if (selected.isNew) {
+      setTournament({ ...tournament, races: nextRaces });
+      setSelectedId(nextRaces[0]?.id);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await tournamentService.deleteTournamentRace(selected.id);
+      const nextTournament = mergeDraftRaces(response.data, nextRaces);
+      setTournament(nextTournament);
+      setSelectedId(nextTournament.races[0]?.id);
+      toast.success("Đã xóa cuộc đua");
+    } catch (error) {
+      console.error("Không thể xóa cuộc đua", error?.response?.data || error);
+      toast.error(getApiErrorMessage(error) || "Không thể xóa cuộc đua");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const saveRaces = async (
-    nextRacesOrEvent = tournament.races,
-    nextSelectedId = selectedId,
-  ) => {
-    const nextRaces = Array.isArray(nextRacesOrEvent)
-      ? nextRacesOrEvent
-      : tournament.races;
+  const saveRace = async (nextRace) => {
+    const nextRaces = tournament.races.map((race) =>
+      race.id === selected.id ? nextRace : race,
+    );
     if (!["DRAFT", "PUBLISHED"].includes(tournament.statusCode)) {
       toast.error(
         "Chỉ có thể lưu cấu hình cuộc đua khi giải đấu ở trạng thái Nháp hoặc Đã công bố",
@@ -83,15 +99,22 @@ export default function RacesTab({ tournament, setTournament }) {
 
     try {
       setSaving(true);
-      const response = await tournamentService.replaceTournamentRaces(
-        tournament.id,
-        nextRaces,
+      const persistedIds = new Set(
+        tournament.races.filter((race) => !race.isNew).map((race) => race.id),
       );
-      setTournament(response.data);
-      setSelectedId(
-        response.data.races.find((race) => race.id === nextSelectedId)?.id ??
-          response.data.races[0]?.id,
+      const response = nextRace.isNew
+        ? await tournamentService.addTournamentRace(tournament.id, nextRace)
+        : await tournamentService.updateTournamentRace(nextRace.id, nextRace);
+      const draftRaces = nextRaces.filter(
+        (race) => race.isNew && race.id !== nextRace.id,
       );
+      const nextTournament = mergeDraftRaces(response.data, draftRaces);
+      const createdRace = nextRace.isNew
+        ? response.data.races.find((race) => !persistedIds.has(race.id))
+        : null;
+
+      setTournament(nextTournament);
+      setSelectedId(createdRace?.id ?? nextRace.id);
       toast.success("Đã lưu cấu hình cuộc đua");
     } catch (error) {
       console.error(
@@ -107,17 +130,11 @@ export default function RacesTab({ tournament, setTournament }) {
   };
 
   const saveRaceInfo = (draft) => {
-    const nextRaces = tournament.races.map((race) =>
-      race.id === selected.id ? { ...race, ...draft } : race,
-    );
-    return saveRaces(nextRaces, selected.id);
+    return saveRace({ ...selected, ...draft });
   };
 
   const saveRacePrizes = (prizes) => {
-    const nextRaces = tournament.races.map((race) =>
-      race.id === selected.id ? { ...race, prizes } : race,
-    );
-    return saveRaces(nextRaces, selected.id);
+    return saveRace({ ...selected, prizes });
   };
 
   if (!selected) {
@@ -215,7 +232,8 @@ export default function RacesTab({ tournament, setTournament }) {
               type="button"
               aria-label="Xóa cuộc đua"
               onClick={removeRace}
-              className="p-3 text-white/55 hover:text-rose-300"
+              disabled={saving}
+              className="p-3 text-white/55 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 className="h-5 w-5" />
             </button>
@@ -268,6 +286,22 @@ export default function RacesTab({ tournament, setTournament }) {
       </div>
     </div>
   );
+}
+
+function mergeDraftRaces(tournament, races) {
+  const draftRaces = races.filter((race) => race.isNew);
+  if (!draftRaces.length) return tournament;
+
+  const mergedRaces = [...tournament.races, ...draftRaces].map((race, index) => ({
+    ...race,
+    no: index + 1,
+  }));
+
+  return {
+    ...tournament,
+    races: mergedRaces,
+    raceCount: mergedRaces.length,
+  };
 }
 
 function shiftTime(time, hours) {
@@ -535,7 +569,7 @@ function RaceInfo({ race, tournament, saving, onSave }) {
           </div>
         </Field>
         <Field label="Trạng thái" full>
-          <Input value="Nháp" disabled />
+          <Input value={draft.status || "Nháp"} disabled />
         </Field>
       </div>
       <PanelActions
