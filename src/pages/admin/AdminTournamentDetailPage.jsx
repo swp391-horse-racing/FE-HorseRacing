@@ -15,14 +15,18 @@ import {
 } from '@/components/tournament-detail'
 import { getTotalPrize } from '@/components/tournament-detail/utils'
 import { tournamentService } from '@/services/tournamentService'
+import { useApiCacheStore } from '@/store/apiCacheStore'
 
 export default function AdminTournamentDetailPage() {
   const { id = '' } = useParams()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const createdTournament = location.state?.tournament
-  const [tournament, setTournament] = useState(createdTournament?.id === id ? createdTournament : null)
-  const [loading, setLoading] = useState(true)
+  const cacheKey = `admin:tournament:${id}`
+  const cachedTournament = useApiCacheStore.getState().getCache(cacheKey)?.data
+  const initialTournament = createdTournament?.id === id ? createdTournament : cachedTournament
+  const [tournament, setTournament] = useState(initialTournament ?? null)
+  const [loading, setLoading] = useState(!initialTournament)
   const [error, setError] = useState('')
   const selectedTab = detailTabs.some((tab) => tab.key === searchParams.get('tab'))
     ? searchParams.get('tab')
@@ -30,13 +34,24 @@ export default function AdminTournamentDetailPage() {
 
   useEffect(() => {
     let cancelled = false
+    const cachedAtLoad = useApiCacheStore.getState().getCache(cacheKey)?.data
+    const initialTournamentAtLoad = createdTournament?.id === id ? createdTournament : cachedAtLoad
 
     async function loadTournament() {
       try {
-        setLoading(true)
+        if (initialTournamentAtLoad) {
+          setTournament(initialTournamentAtLoad)
+          setLoading(false)
+        } else {
+          setLoading(true)
+        }
+
         setError('')
         const response = await tournamentService.getAdminTournament(id)
-        if (!cancelled) setTournament(response.data)
+        if (!cancelled) {
+          const changed = useApiCacheStore.getState().setCache(cacheKey, response.data)
+          if (changed || !initialTournamentAtLoad) setTournament(response.data)
+        }
       } catch (requestError) {
         if (!cancelled) {
           setError(
@@ -55,7 +70,19 @@ export default function AdminTournamentDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [cacheKey, id])
+
+  const updateTournament = (nextTournamentOrUpdater) => {
+    setTournament((currentTournament) => {
+      const nextTournament =
+        typeof nextTournamentOrUpdater === 'function'
+          ? nextTournamentOrUpdater(currentTournament)
+          : nextTournamentOrUpdater
+
+      if (nextTournament) useApiCacheStore.getState().setCache(cacheKey, nextTournament)
+      return nextTournament
+    })
+  }
 
   const changeTab = (tab) => {
     const next = new URLSearchParams(searchParams)
@@ -114,11 +141,11 @@ export default function AdminTournamentDetailPage() {
       {selectedTab === 'overview' && (
         <OverviewTab tournament={tournament} totalPrize={totalPrize} totalRegistered={totalRegistered} />
       )}
-      {selectedTab === 'races' && <RacesTab tournament={tournament} setTournament={setTournament} />}
+      {selectedTab === 'races' && <RacesTab tournament={tournament} setTournament={updateTournament} />}
       {selectedTab === 'participants' && <ParticipantsTab tournament={tournament} />}
       {selectedTab === 'schedule' && <ScheduleTab tournament={tournament} />}
       {selectedTab === 'results' && <ResultsTab tournament={tournament} />}
-      {selectedTab === 'settings' && <SettingsTab tournament={tournament} setTournament={setTournament} />}
+      {selectedTab === 'settings' && <SettingsTab tournament={tournament} setTournament={updateTournament} />}
     </AdminLayout>
   )
 }

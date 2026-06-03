@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useApiCacheStore } from '@/store/apiCacheStore'
 
 export function useFetch(fetchFn, options = {}) {
-  const { enabled = true, deps = [] } = options
+  const { enabled = true, deps = [], cacheKey } = options
+  const depsKey = JSON.stringify(deps)
+  const cached = cacheKey ? useApiCacheStore.getState().getCache(cacheKey) : null
 
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(Boolean(enabled))
+  const [data, setData] = useState(cached?.data ?? null)
+  const [loading, setLoading] = useState(Boolean(enabled && !cached))
   const [error, setError] = useState(null)
 
   const fetchFnRef = useRef(fetchFn)
-  fetchFnRef.current = fetchFn
+
+  useEffect(() => {
+    fetchFnRef.current = fetchFn
+  }, [fetchFn])
 
   const refetch = useCallback(async () => {
     if (!enabled) {
@@ -16,12 +22,25 @@ export function useFetch(fetchFn, options = {}) {
       return null
     }
 
-    setLoading(true)
+    const cachedData = cacheKey ? useApiCacheStore.getState().getCache(cacheKey)?.data : null
+    const hasCachedData = cachedData !== null && cachedData !== undefined
+
+    if (hasCachedData) {
+      setData(cachedData)
+    } else {
+      setLoading(true)
+    }
+
     setError(null)
 
     try {
       const result = await fetchFnRef.current()
-      setData(result)
+      if (cacheKey) {
+        const changed = useApiCacheStore.getState().setCache(cacheKey, result)
+        if (changed || !hasCachedData) setData(result)
+      } else {
+        setData(result)
+      }
       return result
     } catch (err) {
       setError(err)
@@ -29,15 +48,15 @@ export function useFetch(fetchFn, options = {}) {
     } finally {
       setLoading(false)
     }
-  }, [enabled, ...deps])
+  }, [enabled, cacheKey])
 
   useEffect(() => {
     if (enabled) {
-      refetch().catch(() => {})
-    } else {
-      setLoading(false)
+      queueMicrotask(() => {
+        refetch().catch(() => {})
+      })
     }
-  }, [enabled, refetch])
+  }, [depsKey, enabled, refetch])
 
   return { data, loading, error, refetch, setData }
 }
