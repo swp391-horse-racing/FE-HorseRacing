@@ -18,6 +18,12 @@ export const ENDPOINTS = {
     userById: (id) => `/admin/users/${id}`,
     activeUsers: '/admin/users/active',
     deactivatedUsers: '/admin/users/deactivated',
+    activateUser: (id) => `/admin/users/${id}/activate`,
+    deactivateUser: (id) => `/admin/users/${id}/deactivate`,
+    userRole: (id) => `/admin/users/${id}/role`,
+    roleApplications: '/admin/role-applications',
+    approveRoleApplication: (id) => `/admin/role-applications/${id}/approve`,
+    rejectRoleApplication: (id) => `/admin/role-applications/${id}/reject`,
   },
   tournaments: {
     adminList: '/admin/tournaments',
@@ -36,5 +42,10 @@ export const ENDPOINTS = {
     byId: (id) => `/news/${id}`,
     adminList: '/admin/news',
     adminById: (id) => `/admin/news/${id}`,
+  },
+  horses: {
+    ownerList: '/owner/horses',
+    ownerById: (id) => `/owner/horses/${id}`,
+    approved: '/horses/approved',
   },
 }
