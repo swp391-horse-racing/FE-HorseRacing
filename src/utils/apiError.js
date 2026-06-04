@@ -17,8 +17,11 @@ export function getApiErrorMessage(error, options = {}) {
 
   if (loginFlow) {
     if (status === 401) return 'Email hoặc mật khẩu không đúng'
-    if (status === 403 || status === 500) {
+    if (status === 403) {
       return 'Tài khoản đã bị khóa. Liên hệ quản trị viên để được mở khóa.'
+    }
+    if (status === 500 && /internal server/i.test(message)) {
+      return 'Không đăng nhập được. Nếu admin vừa mở khóa, hãy đợi khoảng 2 phút rồi thử lại.'
     }
     if (status >= 500) return 'Máy chủ đang gặp sự cố. Thử lại sau.'
   }

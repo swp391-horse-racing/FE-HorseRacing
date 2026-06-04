@@ -33,12 +33,15 @@ export default function LoginPage() {
       return
     }
     setLoading(true)
+    const loadingToast = toast.loading('Đang đăng nhập...')
     try {
       const { user } = await login(form)
+      toast.dismiss(loadingToast)
       toast.success('Đăng nhập thành công')
       redirectAfterAuth(user)
     } catch (err) {
-      toast.error(getApiErrorMessage(err, { scene: 'login' }))
+      toast.dismiss(loadingToast)
+      toast.error(getApiErrorMessage(err, { scene: 'login' }), { duration: 6000 })
     } finally {
       setLoading(false)
     }

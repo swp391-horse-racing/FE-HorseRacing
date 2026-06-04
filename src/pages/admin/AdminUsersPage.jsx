@@ -18,6 +18,7 @@ import InviteUserModal from '@/components/InviteUserModal'
 import { PrimaryButton } from '@/components/ui/AdminButton'
 import { adminUserService, ROLE_VALUES } from '@/services/adminUserService'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { markAccountUnlocked } from '@/utils/accountUnlockHint'
 
 function pillTone(value) {
   const tones = {
@@ -110,8 +111,17 @@ export default function AdminUsersPage() {
         await adminUserService.deactivateUser(userId)
         toast.success(`Đã khóa tài khoản ${item.name}`)
       } else {
-        await adminUserService.activateUser(userId)
-        toast.success(`Đã mở khóa tài khoản ${item.name}`)
+        const updated = await adminUserService.activateUser(userId)
+        if (!updated?.active) {
+          toast.error('Mở khóa thất bại trên server. Thử lại.')
+          await loadUsers()
+          return
+        }
+        const email = updated.email || item.email
+        if (email) markAccountUnlocked(email)
+        toast.success(
+          `Đã mở khóa ${item.name}. User có thể đăng nhập ngay hoặc sau tối đa ~2 phút (cache server).`,
+        )
       }
 
       setUsers((prev) =>

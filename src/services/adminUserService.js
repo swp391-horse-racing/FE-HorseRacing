@@ -130,16 +130,23 @@ export const adminUserService = {
     )
   },
 
+  async getUserById(id) {
+    const data = await axiosClient.get(ENDPOINTS.admin.userById(id)).then(unwrapResponse)
+    return mapUser(data)
+  },
+
   async activateUser(id) {
     await axiosClient
       .put(ENDPOINTS.admin.activateUser(id), {}, { headers: { 'Content-Type': 'application/json' } })
       .then(unwrapResponse)
+    return this.getUserById(id)
   },
 
   async deactivateUser(id) {
     await axiosClient
       .put(ENDPOINTS.admin.deactivateUser(id), {}, { headers: { 'Content-Type': 'application/json' } })
       .then(unwrapResponse)
+    return this.getUserById(id)
   },
 
   async updateUserRole(id, role) {
