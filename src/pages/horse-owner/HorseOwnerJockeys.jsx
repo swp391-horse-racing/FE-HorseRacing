@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, Send, Search, Trophy, Users, X } from "lucide-react";
+import { Award, CheckCircle, Eye, FileText, Send, Search, Trophy, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { horseService } from "@/services/horseService";
 import { jockeyService } from "@/services/jockeyService";
+import { tournamentService } from "@/services/tournamentService";
 import { getApiErrorMessage } from "@/utils/apiError";
 import {
   GlassCard,
@@ -19,6 +20,10 @@ function findInvitationForJockey(invitations, jockey) {
 }
 
 function mergeJockeyAccountsWithProfiles(accounts, approvedProfiles) {
+  if (!accounts.length) {
+    return approvedProfiles;
+  }
+
   const profileByUserId = new Map(
     approvedProfiles.map((profile) => [String(profile.userId), profile]),
   );
@@ -46,34 +51,96 @@ function mergeJockeyAccountsWithProfiles(accounts, approvedProfiles) {
   });
 }
 
+function formatRaceDate(value) {
+  if (!value) return "Chưa cập nhật";
+  return String(value).replace("T", " · ").slice(0, 18);
+}
+
+function buildRaceOptions(tournaments) {
+  const invitableTournamentStatuses = ["PUBLISHED", "OPEN_REGISTRATION"];
+  const invitableRaceStatuses = ["PUBLISHED", "OPEN_REGISTRATION"];
+
+  return tournaments.flatMap((tournament) =>
+    (tournament.races ?? [])
+      .filter(
+        (race) =>
+          race.id &&
+          invitableTournamentStatuses.includes(tournament.statusCode) &&
+          invitableRaceStatuses.includes(race.raw?.status),
+      )
+      .map((race) => ({
+        id: String(race.id),
+        label: `${tournament.name} · ${race.name}`,
+        meta: `${race.date || "Chưa cập nhật"} ${race.time || ""}`.trim(),
+      })),
+  );
+}
+
+async function loadInvitableTournaments() {
+  const listResponse = await tournamentService.getPublicTournaments();
+  const list = listResponse.data ?? [];
+  const publicTournaments = list.filter((tournament) =>
+    ["PUBLISHED", "OPEN_REGISTRATION"].includes(tournament.statusCode),
+  );
+
+  const detailed = await Promise.all(
+    publicTournaments.map(async (tournament) => {
+      if ((tournament.races ?? []).length > 0) return tournament;
+
+      try {
+        const detail = await tournamentService.getPublicTournament(tournament.id);
+        return detail.data ?? tournament;
+      } catch (error) {
+        console.warn("Không thể tải chi tiết giải đấu", tournament.id, error?.response?.data || error);
+        return tournament;
+      }
+    }),
+  );
+
+  return detailed;
+}
+
 export function HorseOwnerJockeys() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("Tất cả");
   const [jockeys, setJockeys] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [horses, setHorses] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [inviteTarget, setInviteTarget] = useState(null);
-  const [inviteForm, setInviteForm] = useState({ horseId: "", message: "" });
+  const [detailTarget, setDetailTarget] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ horseId: "", raceId: "", remunerationAmount: "", message: "" });
 
   const approvedHorses = useMemo(
     () => horses.filter((horse) => horse.statusCode === "APPROVED"),
     [horses],
   );
 
+  const raceOptions = useMemo(() => buildRaceOptions(tournaments), [tournaments]);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [jockeyAccounts, availableJockeys, ownerInvitations, ownerHorses] = await Promise.all([
-        jockeyService.getJockeyAccounts(),
+      const [jockeyAccounts, availableJockeys, ownerInvitations, ownerHorses, publicTournaments] = await Promise.all([
+        jockeyService.getJockeyAccounts().catch((error) => {
+          console.warn("Không thể tải tài khoản jockey", error?.response?.data || error);
+          return [];
+        }),
         jockeyService.getAvailableJockeys(),
         jockeyService.getOwnerInvitations(),
         horseService.getOwnerHorses(),
+        loadInvitableTournaments().catch((error) => {
+          console.warn("Không thể tải danh sách cuộc đua", error?.response?.data || error);
+          return [];
+        }),
       ]);
       setJockeys(mergeJockeyAccountsWithProfiles(jockeyAccounts, availableJockeys));
       setInvitations(ownerInvitations);
       setHorses(ownerHorses);
+      setTournaments(publicTournaments);
     } catch (error) {
       console.error("Không thể tải dữ liệu jockey", error?.response?.data || error);
       toast.error(getApiErrorMessage(error) || "Không thể tải dữ liệu jockey");
@@ -129,13 +196,52 @@ export function HorseOwnerJockeys() {
       toast.error("Bạn cần có ít nhất một ngựa đã duyệt để mời jockey");
       return;
     }
+    if (raceOptions.length === 0) {
+      toast.error("Chưa có cuộc đua nào đang mở để gửi lời mời");
+      return;
+    }
     setInviteTarget(jockey);
-    setInviteForm({ horseId: approvedHorses[0]?.id ?? "", message: "" });
+    setInviteForm({
+      horseId: approvedHorses[0]?.id ?? "",
+      raceId: raceOptions[0]?.id ?? "",
+      remunerationAmount: "",
+      message: "",
+    });
+  };
+
+  const openDetail = async (jockey) => {
+    if (!jockey.hasApprovedProfile) {
+      toast.error("Jockey này chưa có hồ sơ đã duyệt");
+      return;
+    }
+
+    try {
+      setLoadingDetail(true);
+      setDetailTarget(jockey);
+      const detail = await jockeyService.getJockeyDetail(jockey.userId);
+      setDetailTarget({
+        ...jockey,
+        ...detail,
+        invitation: jockey.invitation,
+        assigned: jockey.assigned,
+      });
+    } catch (error) {
+      console.error("Không thể tải chi tiết jockey", error?.response?.data || error);
+      toast.error(getApiErrorMessage(error) || "Không thể tải chi tiết jockey");
+      setDetailTarget(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setDetailTarget(null);
+    setLoadingDetail(false);
   };
 
   const closeInvite = () => {
     setInviteTarget(null);
-    setInviteForm({ horseId: "", message: "" });
+    setInviteForm({ horseId: "", raceId: "", remunerationAmount: "", message: "" });
   };
 
   const submitInvite = async () => {
@@ -143,12 +249,23 @@ export function HorseOwnerJockeys() {
       toast.error("Vui lòng chọn ngựa để gửi lời mời");
       return;
     }
+    if (!inviteForm.raceId) {
+      toast.error("Vui lòng chọn cuộc đua để gửi lời mời");
+      return;
+    }
+    const remunerationAmount = Number(inviteForm.remunerationAmount);
+    if (!Number.isFinite(remunerationAmount) || remunerationAmount < 0) {
+      toast.error("Vui lòng nhập thù lao hợp lệ");
+      return;
+    }
 
     try {
       setSaving(true);
       const invitation = await jockeyService.createInvitation({
         horseId: Number(inviteForm.horseId),
+        raceId: Number(inviteForm.raceId),
         jockeyId: Number(inviteTarget.userId),
+        remunerationAmount,
         message: inviteForm.message,
       });
       setInvitations((prev) => [invitation, ...prev]);
@@ -276,10 +393,6 @@ export function HorseOwnerJockeys() {
                     <Pill tone={jockey.statusTone}>{jockey.status}</Pill>
                   </div>
                 </div>
-                <div className="shrink-0 text-center">
-                  <div className="text-lg font-bold text-[#D4A017]">{jockey.hirePriceText}</div>
-                  <div className="text-[10px] text-white/40">Giá thuê</div>
-                </div>
               </div>
 
               <div className="mb-4 grid grid-cols-3 gap-2 rounded-xl bg-white/[0.04] p-3">
@@ -319,6 +432,9 @@ export function HorseOwnerJockeys() {
               )}
 
               <div className="flex gap-2">
+                <GhostButton className="flex-1" icon={Eye} onClick={() => openDetail(jockey)}>
+                  Xem chi tiết
+                </GhostButton>
                 {jockey.invitation?.statusCode === "PENDING" ? (
                   <GhostButton
                     className="flex-1"
@@ -348,6 +464,166 @@ export function HorseOwnerJockeys() {
               <p>Không tìm thấy jockey nào</p>
             </div>
           )}
+        </div>
+      )}
+
+      {detailTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <GlassCard className="max-h-[90vh] w-full max-w-3xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-white/10 p-5">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#D4A017]/20 bg-gradient-to-br from-[#D4A017]/20 to-[#0F1E3A] text-2xl font-bold text-[#D4A017]">
+                  {detailTarget.avatarUrl ? (
+                    <img
+                      src={detailTarget.avatarUrl}
+                      alt={detailTarget.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    detailTarget.name.charAt(0)
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-xl font-bold text-white">{detailTarget.name}</h2>
+                  <p className="mt-1 text-sm text-white/45">{detailTarget.license}</p>
+                  <div className="mt-2">
+                    <Pill tone={detailTarget.statusTone}>{detailTarget.status}</Pill>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeDetail}
+                className="rounded-lg p-1.5 transition-all hover:bg-white/10"
+              >
+                <X className="h-5 w-5 text-white/60" />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(90vh-112px)] overflow-y-auto p-5">
+              {loadingDetail ? (
+                <div className="py-14 text-center text-sm text-white/55">Đang tải chi tiết jockey...</div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-3 gap-3 rounded-2xl bg-white/[0.04] p-4">
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-[#D4A017]">{detailTarget.wins}</div>
+                      <div className="text-xs text-white/45">Thắng</div>
+                    </div>
+                    <div className="border-x border-white/10 text-center">
+                      <div className="text-xl font-bold text-white">{detailTarget.races}</div>
+                      <div className="text-xs text-white/45">Race</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-emerald-300">{detailTarget.winRate}%</div>
+                      <div className="text-xs text-white/45">Tỷ lệ thắng</div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      ["Kinh nghiệm", `${detailTarget.experience || 0} năm`],
+                      ["Chiều cao", `${detailTarget.height || 0} cm`],
+                      ["Cân nặng", `${detailTarget.weight || 0} kg`],
+                      ["Ngựa đã nhận", detailTarget.assigned ?? "Chưa có"],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-white/40">{label}</div>
+                        <div className="mt-1 font-semibold text-white">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {(detailTarget.bio || detailTarget.specialties || detailTarget.awards) && (
+                    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                      {detailTarget.bio && (
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                            Giới thiệu
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-white/70">{detailTarget.bio}</p>
+                        </div>
+                      )}
+                      {detailTarget.specialties && (
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                            Chuyên môn
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-white/70">{detailTarget.specialties}</p>
+                        </div>
+                      )}
+                      {detailTarget.awards && (
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                            Thành tích
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-white/70">{detailTarget.awards}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {detailTarget.licenseDocumentUrl && (
+                      <a
+                        href={detailTarget.licenseDocumentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition hover:border-[#D4A017]/50"
+                      >
+                        <FileText className="h-4 w-4 text-[#D4A017]" />
+                        Xem giấy phép
+                      </a>
+                    )}
+                    {detailTarget.achievements && (
+                      <a
+                        href={detailTarget.achievements}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition hover:border-[#D4A017]/50"
+                      >
+                        <Award className="h-4 w-4 text-[#D4A017]" />
+                        Xem ảnh thành tích
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <h3 className="mb-3 font-bold text-white">Lịch sử thi đấu</h3>
+                    {detailTarget.raceHistory?.length ? (
+                      <div className="space-y-2">
+                        {detailTarget.raceHistory.map((race, index) => (
+                          <div
+                            key={`${race.raceId ?? index}-${race.scheduledStartAt ?? index}`}
+                            className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <div className="font-semibold text-white">{race.raceName ?? "Cuộc đua"}</div>
+                                <div className="mt-1 text-xs text-white/45">
+                                  {race.tournamentName ?? "Giải đấu"} · {formatRaceDate(race.scheduledStartAt)}
+                                </div>
+                              </div>
+                              <Pill tone={Number(race.rank) === 1 ? "gold" : "gray"}>
+                                {race.rank ? `Hạng ${race.rank}` : race.status ?? "Chưa có kết quả"}
+                              </Pill>
+                            </div>
+                            {race.horseName && (
+                              <div className="mt-2 text-xs text-white/50">Ngựa: {race.horseName}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-white/45">
+                        Chưa có lịch sử thi đấu
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </GlassCard>
         </div>
       )}
 
@@ -381,6 +657,31 @@ export function HorseOwnerJockeys() {
                     </option>
                   ))}
                 </select>
+              </HorseOwnerFormField>
+
+              <HorseOwnerFormField label="Cuộc đua">
+                <select
+                  value={inviteForm.raceId}
+                  onChange={(event) => setInviteForm({ ...inviteForm, raceId: event.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-[#17191d] px-4 py-2.5 text-sm text-white focus:border-[#D4A017] focus:outline-none focus:ring-2 focus:ring-[#D4A017]/20"
+                >
+                  {raceOptions.map((race) => (
+                    <option key={race.id} value={race.id} className="bg-[#17191d] text-white">
+                      {race.label} · {race.meta}
+                    </option>
+                  ))}
+                </select>
+              </HorseOwnerFormField>
+
+              <HorseOwnerFormField label="Thù lao lời mời (VNĐ)">
+                <TextInput
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={inviteForm.remunerationAmount}
+                  onChange={(event) => setInviteForm({ ...inviteForm, remunerationAmount: event.target.value })}
+                  placeholder="VD: 5000000"
+                />
               </HorseOwnerFormField>
 
               <HorseOwnerFormField label="Lời nhắn">

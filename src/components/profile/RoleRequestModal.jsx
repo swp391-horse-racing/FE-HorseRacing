@@ -28,7 +28,6 @@ const ROLE_FIELDS = {
     { name: 'experienceYears', label: 'Số năm kinh nghiệm', type: 'number', placeholder: '5' },
     { name: 'heightCm', label: 'Chiều cao (cm)', type: 'number', placeholder: '165' },
     { name: 'weightKg', label: 'Cân nặng (kg)', type: 'number', placeholder: '55' },
-    { name: 'hirePrice', label: 'Giá thuê (VNĐ)', type: 'number', required: true, placeholder: '1000000' },
     { name: 'bio', label: 'Giới thiệu', type: 'textarea' },
     { name: 'awards', label: 'Thành tích / Giải thưởng', type: 'textarea' },
     { name: 'specialties', label: 'Chuyên môn', type: 'textarea' },

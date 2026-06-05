@@ -25,7 +25,6 @@ const ROLE_FIELDS = {
     { key: 'experienceYears', label: 'Số năm kinh nghiệm', format: 'number' },
     { key: 'heightCm', label: 'Chiều cao (cm)', format: 'number' },
     { key: 'weightKg', label: 'Cân nặng (kg)', format: 'number' },
-    { key: 'hirePrice', label: 'Giá thuê (VNĐ)', format: 'currency' },
     { key: 'awards', label: 'Thành tích / Giải thưởng' },
     { key: 'specialties', label: 'Chuyên môn' },
     { key: 'avatarUrl', label: 'Ảnh đại diện', format: 'url' },

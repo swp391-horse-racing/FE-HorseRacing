@@ -60,6 +60,10 @@ export const ENDPOINTS = {
     ownerInvitationById: (id) => `/owner/jockey-invitations/${id}`,
     ownerCancelInvitation: (id) => `/owner/jockey-invitations/${id}/cancel`,
     ownerAccepted: '/owners/me/jockeys',
+    jockeyInvitations: '/jockey/invitations',
+    jockeyInvitationById: (id) => `/jockey/invitations/${id}`,
+    jockeyAcceptInvitation: (id) => `/jockey/invitations/${id}/accept`,
+    jockeyRejectInvitation: (id) => `/jockey/invitations/${id}/reject`,
   },
   wallet: {
     me: '/wallets/me',

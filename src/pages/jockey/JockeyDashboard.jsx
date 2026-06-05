@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Calendar,
@@ -20,22 +21,39 @@ import {
 } from "../admin/AdminLayout";
 import {
   jockeyProfile,
-  invitations,
   schedules,
   jockeyResults,
   jockeyNotifications,
   assignedHorses,
   fmt,
 } from "./data";
+import { jockeyService } from "@/services/jockeyService";
 import { JockeyQuickAction } from "./components/JockeyQuickAction";
 import { JockeyStatRow } from "./components/JockeyStatRow";
 
 export function JockeyDashboard() {
+  const [invitations, setInvitations] = useState([]);
   const unread = jockeyNotifications.filter((n) => !n.read).length;
   const pendingInvitations = invitations.filter(
-    (i) => i.status === "Chờ xử lý",
+    (i) => i.statusCode === "PENDING",
   );
   const totalPrize = jockeyResults.reduce((s, r) => s + r.prize, 0);
+
+  useEffect(() => {
+    let active = true;
+    jockeyService
+      .getJockeyInvitations()
+      .then((data) => {
+        if (active) setInvitations(data);
+      })
+      .catch((error) => {
+        console.error("Không thể tải lời mời jockey", error?.response?.data || error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <JockeyLayout
@@ -174,18 +192,18 @@ export function JockeyDashboard() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-sm font-bold text-white">
-                          {inv.horse}
+                          {inv.horseName || "Ngựa chưa cập nhật"}
                         </div>
                         <div className="text-xs text-white/50">
-                          {inv.tournament} · {inv.raceNo}
+                          Từ chủ ngựa: {inv.ownerUsername || `Owner #${inv.ownerId}`}
                         </div>
                         <div className="text-xs text-white/40 mt-1">
-                          {inv.raceDate} · {inv.raceTime} · {inv.owner}
+                          {inv.message || "Không có lời nhắn"}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-sm font-bold text-[#D4A017]">
-                          {fmt(inv.reward)}
+                          {inv.remunerationText}
                         </div>
                         <div className="text-[10px] text-white/40">Thù lao</div>
                       </div>

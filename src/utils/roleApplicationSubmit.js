@@ -58,7 +58,6 @@ export async function submitRoleApplication(role, { values, files, fileFieldName
         experienceYears: textFields.experienceYears,
         heightCm: textFields.heightCm,
         weightKg: textFields.weightKg,
-        hirePrice: textFields.hirePrice,
         bio: textFields.bio,
         awards: textFields.awards,
         specialties: textFields.specialties,
