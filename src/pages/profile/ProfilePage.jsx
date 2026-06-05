@@ -71,7 +71,7 @@ export default function ProfilePage() {
           navigate(getRoleHomePath(role), { replace: true })
         }
       } catch {
-        /* ignore polling errors */
+       
       }
     }
 
@@ -122,7 +122,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FFF8F0] via-white to-[#FAFAFA]">
-      {/* Hero / Profile Card — khớp Figma */}
       <section className="relative pt-12 pb-12 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#D4A017]/10 to-[#1E3A5F]/10" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
