@@ -4,7 +4,6 @@ import { getStoredToken, setStoredToken, removeStoredToken } from '@/utils/token
 import { isTokenExpired, getRoleFromToken } from '@/utils/jwtDecode'
 import { applyAuthToState, mapAuthResponseToUser } from '@/utils/mapAuthResponse'
 import { normalizeRole } from '@/utils/roleRedirect'
-import { getLoginRetryPlan, isLoginLockError, sleep } from '@/utils/accountUnlockHint'
 import { horseOwnerAccount } from '@/pages/horse-owner/data'
 import { jockeyAccount } from '@/pages/jockey/data'
 
@@ -88,37 +87,18 @@ export const useAuthStore = create((set, get) => ({
       return { auth: mockSession, user: mockSession.user }
     }
 
-    const trimmedEmail = email?.trim()
-    const credentials = { email: trimmedEmail, password }
+    const auth = await authService.login({
+      email: email?.trim(),
+      password,
+    })
+    const session = persistLogin(auth)
+    set({ ...session, isLoading: false })
 
-    const finishLogin = async (auth) => {
-      const session = persistLogin(auth)
-      set({ ...session, isLoading: false })
-      if (!session.user?.email) {
-        const user = await get().fetchProfile()
-        return { auth, user }
-      }
-      return { auth, user: session.user }
+    if (!session.user?.email) {
+      const user = await get().fetchProfile()
+      return { auth, user }
     }
-
-    try {
-      return await finishLogin(await authService.login(credentials))
-    } catch (err) {
-      const plan = getLoginRetryPlan(trimmedEmail, err)
-      if (!plan) throw err
-
-      const { stepMs, maxAttempts } = plan
-
-      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        await sleep(stepMs)
-        try {
-          return await finishLogin(await authService.login(credentials))
-        } catch (retryErr) {
-          if (!isLoginLockError(retryErr) || attempt === maxAttempts - 1) throw retryErr
-        }
-      }
-      throw err
-    }
+    return { auth, user: session.user }
   },
 
   loginWithGoogle: async (idToken) => {

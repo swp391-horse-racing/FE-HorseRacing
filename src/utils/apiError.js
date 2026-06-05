@@ -3,6 +3,11 @@ function isLoginRequest(error) {
   return url.includes('/auth/login')
 }
 
+function isAccountLockedMessage(message) {
+  const text = String(message ?? '').toLowerCase()
+  return /khóa|locked|disabled|bị khóa/.test(text)
+}
+
 /** Thông báo lỗi từ BE — options.scene: 'login' | 'register' */
 export function getApiErrorMessage(error, options = {}) {
   const status = error?.response?.status
@@ -17,11 +22,12 @@ export function getApiErrorMessage(error, options = {}) {
 
   if (loginFlow) {
     if (status === 401) return 'Email hoặc mật khẩu không đúng'
-    if (status === 403) {
-      return 'Tài khoản đã bị khóa hoặc trạng thái chưa đồng bộ. Nếu admin vừa mở khóa, đợi ~2 phút rồi đăng nhập lại.'
-    }
-    if (status === 500 && /internal server/i.test(message)) {
-      return 'Không đăng nhập được (cache máy chủ). Thử lại sau ~2 phút hoặc bấm Đăng nhập một lần nữa — hệ thống sẽ tự thử lại.'
+    if (
+      status === 403 ||
+      isAccountLockedMessage(message) ||
+      (status === 500 && /internal server/i.test(message))
+    ) {
+      return 'Tài khoản đã bị khóa. Liên hệ quản trị viên để được mở khóa.'
     }
     if (status >= 500) return 'Máy chủ đang gặp sự cố. Thử lại sau.'
   }
