@@ -61,6 +61,11 @@ export function mapJockeyAccount(user) {
 }
 
 export function mapJockeyProfile(profile) {
+  const performance = profile?.performance ?? {}
+  const totalRaces = Number(performance?.totalRaces ?? 0)
+  const wins = Number(performance?.wins ?? 0)
+  const winRate = Number(performance?.winRate ?? 0)
+
   return {
     id: String(profile?.id ?? ''),
     profileId: profile?.id,
@@ -82,10 +87,12 @@ export function mapJockeyProfile(profile) {
     statusCode: profile?.status ?? 'APPROVED',
     status: 'Sẵn sàng',
     statusTone: 'green',
-    wins: 0,
-    races: 0,
-    winRate: 0,
+    wins,
+    races: totalRaces,
+    winRate,
     ranking: '-',
+    raceHistory: Array.isArray(profile?.raceHistory) ? profile.raceHistory : [],
+    performance,
     assigned: null,
     active: true,
     hasApprovedProfile: true,
@@ -95,6 +102,7 @@ export function mapJockeyProfile(profile) {
 
 export function mapJockeyInvitation(invitation) {
   const statusCode = invitation?.status ?? 'PENDING'
+  const remunerationAmount = Number(invitation?.remunerationAmount ?? 0)
 
   return {
     id: String(invitation?.id ?? ''),
@@ -106,16 +114,24 @@ export function mapJockeyInvitation(invitation) {
     jockeyProfileId: invitation?.jockeyProfileId,
     horseId: invitation?.horseId,
     horseName: invitation?.horseName ?? '',
+    raceId: invitation?.raceId,
+    raceName: invitation?.raceName ?? '',
+    tournamentId: invitation?.tournamentId,
+    tournamentName: invitation?.tournamentName ?? '',
     statusCode,
     status: INVITATION_STATUS_LABELS[statusCode] ?? statusCode,
     statusTone: INVITATION_STATUS_TONES[statusCode] ?? 'gray',
     message: invitation?.message ?? '',
     responseNote: invitation?.responseNote ?? '',
-    hirePrice: Number(invitation?.hirePrice ?? 0),
-    hirePriceText: formatCurrency(invitation?.hirePrice),
+    remunerationAmount,
+    remunerationText: formatCurrency(remunerationAmount),
+    reward: remunerationAmount,
     taxAmount: Number(invitation?.taxAmount ?? 0),
     jockeyPayoutAmount: Number(invitation?.jockeyPayoutAmount ?? 0),
     createdAt: invitation?.createdAt ?? null,
+    updatedAt: invitation?.updatedAt ?? null,
+    respondedAt: invitation?.respondedAt ?? null,
+    cancelledAt: invitation?.cancelledAt ?? null,
     raw: invitation,
   }
 }
@@ -131,6 +147,11 @@ export const jockeyService = {
     return Array.isArray(data) ? data.map(mapJockeyProfile) : []
   },
 
+  async getJockeyDetail(id) {
+    const data = await axiosClient.get(ENDPOINTS.jockeys.publicById(id)).then(unwrapResponse)
+    return mapJockeyProfile(data)
+  },
+
   async getOwnerInvitations() {
     const data = await axiosClient.get(ENDPOINTS.jockeys.ownerInvitations).then(unwrapResponse)
     return Array.isArray(data) ? data.map(mapJockeyInvitation) : []
@@ -141,15 +162,32 @@ export const jockeyService = {
     return Array.isArray(data) ? data.map(mapJockeyInvitation) : []
   },
 
-  async createInvitation({ horseId, jockeyId, message }) {
+  async createInvitation({ horseId, raceId, jockeyId, message, remunerationAmount }) {
     const data = await axiosClient
-      .post(ENDPOINTS.jockeys.ownerInvitations, { horseId, jockeyId, message })
+      .post(ENDPOINTS.jockeys.ownerInvitations, { horseId, raceId, jockeyId, message, remunerationAmount })
       .then(unwrapResponse)
     return mapJockeyInvitation(data)
   },
 
   async cancelInvitation(id) {
     const data = await axiosClient.put(ENDPOINTS.jockeys.ownerCancelInvitation(id)).then(unwrapResponse)
+    return mapJockeyInvitation(data)
+  },
+
+  async getJockeyInvitations() {
+    const data = await axiosClient.get(ENDPOINTS.jockeys.jockeyInvitations).then(unwrapResponse)
+    return Array.isArray(data) ? data.map(mapJockeyInvitation) : []
+  },
+
+  async acceptJockeyInvitation(id, note = '') {
+    const payload = note?.trim() ? { note: note.trim() } : null
+    const data = await axiosClient.put(ENDPOINTS.jockeys.jockeyAcceptInvitation(id), payload).then(unwrapResponse)
+    return mapJockeyInvitation(data)
+  },
+
+  async rejectJockeyInvitation(id, note = '') {
+    const payload = note?.trim() ? { note: note.trim() } : null
+    const data = await axiosClient.put(ENDPOINTS.jockeys.jockeyRejectInvitation(id), payload).then(unwrapResponse)
     return mapJockeyInvitation(data)
   },
 }
