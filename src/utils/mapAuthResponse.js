@@ -14,7 +14,9 @@ export function mapAuthResponseToUser(auth) {
     roleApprovalStatus: auth.roleApprovalStatus,
     roleReviewReason: auth.roleReviewReason,
     avatarUrl: auth.avatarUrl,
+    location: auth.location,
     createdAt: auth.createdAt,
+    updatedAt: auth.updatedAt,
   }
 }
 

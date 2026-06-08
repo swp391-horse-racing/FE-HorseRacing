@@ -9,10 +9,7 @@ import {
   PawPrint,
   BarChart3,
   Trophy,
-  Bell,
-  Settings,
   Search,
-  ChevronDown,
   LogOut,
   Menu,
   X,
@@ -33,8 +30,6 @@ const JOCKEY_NAV = [
   { label: "Kết quả thi đấu", to: "/jockey/results", icon: BarChart3 },
   { label: "Bảng xếp hạng", to: "/jockey/rankings", icon: Trophy },
   { label: "Ví của tôi", to: "/jockey/wallet", icon: Wallet },
-  { label: "Thông báo", to: "/jockey/notifications", icon: Bell },
-  { label: "Cài đặt", to: "/jockey/settings", icon: Settings },
 ];
 
 export function JockeyLayout({ children, title, subtitle, actions }) {
@@ -136,26 +131,13 @@ export function JockeyLayout({ children, title, subtitle, actions }) {
           </div>
           <div className="flex items-center gap-2">
             <RoleWalletBadge to={WALLET_PATHS.JOCKEY} walletMode="user" theme="dark" />
-            <button type="button" className="p-2 hover:bg-white/5 rounded-lg relative">
-              <Mail className="w-5 h-5 text-white/60" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#D4A017] rounded-full" />
-            </button>
-            <Link
-              to="/jockey/notifications"
-              className="p-2 hover:bg-white/5 rounded-lg relative"
-            >
-              <Bell className="w-5 h-5 text-white/60" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full" />
-            </Link>
             <div className="flex items-center gap-2 pl-2 ml-2 border-l border-white/10">
               <div className="w-9 h-9 bg-gradient-to-br from-[#D4A017] to-[#B8941F] rounded-xl flex items-center justify-center font-bold shadow-md shadow-[#D4A017]/30">
                 {avatarLetter}
               </div>
-              <div className="hidden md:block">
-                <div className="text-sm font-semibold leading-tight">{displayName}</div>
-                <div className="text-[10px] text-white/40">Jockey</div>
+              <div className="hidden md:block text-sm font-semibold leading-tight">
+                Xin chào, {displayName}
               </div>
-              <ChevronDown className="w-4 h-4 text-white/40" />
             </div>
           </div>
         </header>

@@ -9,6 +9,9 @@ export const userService = {
 
   getProfile: () => axiosClient.get(ENDPOINTS.users.profile).then(unwrapResponse),
 
+  updateProfile: (payload) =>
+    axiosClient.put(ENDPOINTS.users.profile, payload).then(unwrapResponse),
+
   getPublicUserById: (id) => axiosClient.get(ENDPOINTS.users.byId(id)).then(unwrapResponse),
 
   getJockeyAccounts: () => axiosClient.get(ENDPOINTS.users.jockeys).then(unwrapResponse),

@@ -37,4 +37,12 @@ export const authService = {
 
   resetPassword: (payload) =>
     axiosClient.post(ENDPOINTS.auth.resetPassword, payload).then(unwrapResponse),
+
+  updatePassword: (payload) =>
+    axiosClient
+      .put(ENDPOINTS.auth.updatePassword, {
+        currentPassword: payload.currentPassword,
+        newPassword: payload.newPassword,
+      })
+      .then(unwrapResponse),
 }

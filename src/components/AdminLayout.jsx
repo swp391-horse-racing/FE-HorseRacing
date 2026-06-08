@@ -2,16 +2,12 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
-  Bell,
-  ChevronDown,
   LayoutDashboard,
   LogOut,
-  Mail,
   Menu,
   Newspaper,
   PawPrint,
   Search,
-  Settings,
   Trophy,
   Users,
   Wallet,
@@ -29,8 +25,6 @@ const ADMIN_NAV = [
   { label: 'Ngựa', to: '/admin/horses', icon: PawPrint },
   { label: 'Thống kê', to: '/admin/statistics', icon: BarChart3 },
   { label: 'Ví hệ thống', to: '/admin/wallet', icon: Wallet },
-  { label: 'Thông báo', to: '/admin/notifications', icon: Bell },
-  { label: 'Cài đặt', to: '/admin/settings', icon: Settings },
 ]
 
 export default function AdminLayout({
@@ -44,6 +38,9 @@ export default function AdminLayout({
   const location = useLocation()
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
+  const user = useAuthStore((s) => s.user)
+  const displayName = user?.fullName || user?.username || 'Admin'
+  const avatarLetter = displayName.charAt(0).toUpperCase()
   const [open, setOpen] = useState(false)
 
   const handleLogout = async () => {
@@ -132,23 +129,13 @@ export default function AdminLayout({
 
           <div className="flex items-center gap-2 md:gap-4">
             <RoleWalletBadge to={WALLET_PATHS.ADMIN} walletMode="admin" theme="dark" />
-            <button type="button" className="relative rounded-lg p-2 hover:bg-white/5">
-              <Mail className="h-5 w-5 text-white/60" />
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#dda50e]" />
-            </button>
-            <button type="button" className="relative rounded-lg p-2 hover:bg-white/5">
-              <Bell className="h-5 w-5 text-white/60" />
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-400" />
-            </button>
             <div className="ml-2 flex items-center gap-4 border-l border-white/10 pl-4">
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#dda50e] text-xl font-bold shadow-lg shadow-[#d4a017]/30">
-                A
+                {avatarLetter}
               </span>
-              <span className="hidden sm:block">
-                <span className="block text-lg font-bold leading-5">Admin</span>
-                <span className="block text-sm text-white/45">Super Admin</span>
+              <span className="hidden sm:block text-lg font-bold leading-5">
+                Xin chào, {displayName}
               </span>
-              <ChevronDown className="hidden h-5 w-5 text-white/45 sm:block" />
             </div>
           </div>
         </header>

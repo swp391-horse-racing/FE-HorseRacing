@@ -9,14 +9,10 @@ import {
   Users,
   CreditCard,
   BarChart3,
-  Bell,
-  Settings,
   Search,
-  ChevronDown,
   LogOut,
   Menu,
   X,
-  Mail,
   Shield,
   Wallet,
 } from "lucide-react";
@@ -38,8 +34,6 @@ export const HORSE_OWNER_NAV = [
   { label: "Ví của tôi", to: "/horse-owner/wallet", icon: Wallet },
   { label: "Thanh toán", to: "/horse-owner/payments", icon: CreditCard },
   { label: "Kết quả thi đấu", to: "/horse-owner/results", icon: BarChart3 },
-  { label: "Thông báo", to: "/horse-owner/notifications", icon: Bell },
-  { label: "Cài đặt", to: "/horse-owner/settings", icon: Settings },
 ];
 
 export function HorseOwnerLayout({ children, title, subtitle, actions }) {
@@ -153,26 +147,13 @@ export function HorseOwnerLayout({ children, title, subtitle, actions }) {
           </div>
           <div className="flex items-center gap-2">
             <RoleWalletBadge to={WALLET_PATHS.OWNER} walletMode="user" theme="dark" />
-            <button type="button" className="p-2 hover:bg-white/5 rounded-lg relative">
-              <Mail className="w-5 h-5 text-white/60" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#D4A017] rounded-full" />
-            </button>
-            <Link
-              to="/horse-owner/notifications"
-              className="p-2 hover:bg-white/5 rounded-lg relative"
-            >
-              <Bell className="w-5 h-5 text-white/60" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full" />
-            </Link>
             <div className="flex items-center gap-2 pl-2 ml-2 border-l border-white/10">
               <div className="w-9 h-9 bg-gradient-to-br from-[#D4A017] to-[#B8941F] rounded-xl flex items-center justify-center font-bold shadow-md shadow-[#D4A017]/30">
                 {avatarLetter}
               </div>
-              <div className="hidden md:block">
-                <div className="text-sm font-semibold leading-tight">{displayName}</div>
-                <div className="text-[10px] text-white/40">Horse Owner</div>
+              <div className="hidden md:block text-sm font-semibold leading-tight">
+                Xin chào, {displayName}
               </div>
-              <ChevronDown className="w-4 h-4 text-white/40" />
             </div>
           </div>
         </header>

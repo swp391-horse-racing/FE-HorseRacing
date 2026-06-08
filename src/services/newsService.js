@@ -3,25 +3,22 @@ import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
 import { FALLBACK_NEWS_IMAGE } from '@/utils/cloudinary'
 
-function appendIfPresent(formData, key, value) {
-  if (value === undefined || value === null || value === '') return
-  formData.append(key, value)
+const multipartHeaders = {
+  'Content-Type': 'multipart/form-data',
 }
 
-/** FormData khớp @ModelAttribute NewsArticleMultipartRequest trên BE */
 function buildNewsFormData(payload, imageFile) {
   const formData = new FormData()
 
-  appendIfPresent(formData, 'title', payload.title)
-  appendIfPresent(formData, 'summary', payload.summary ?? payload.shortDescription)
-  appendIfPresent(formData, 'content', payload.content)
-  appendIfPresent(formData, 'category', payload.category)
+  formData.append('title', payload.title)
+  formData.append('summary', payload.summary || '')
+  formData.append('content', payload.content)
+  formData.append('category', payload.category)
+  formData.append('featured', !!payload.featured)
 
-  if (payload.featured !== undefined) {
-    formData.append('featured', String(Boolean(payload.featured)))
+  if (payload.publishedAt) {
+    formData.append('publishedAt', payload.publishedAt)
   }
-
-  appendIfPresent(formData, 'publishedAt', payload.publishedAt)
 
   if (imageFile) {
     formData.append('image', imageFile)
@@ -30,155 +27,181 @@ function buildNewsFormData(payload, imageFile) {
   return formData
 }
 
-/** Map BE NewsArticleResponse -> shape used by FE components */
-export function mapNewsArticle(article) {
+function mapNewsArticle(article) {
   if (!article) return null
-
-  const publishedAt = article.publishedAt ?? article.createdAt
-  const imageUrl = article.imageUrl?.trim() || ''
 
   return {
     id: String(article.id),
-    title: article.title ?? '',
-    shortDescription: article.summary ?? '',
-    content: article.content ?? '',
-    imageUrl,
-    thumbnail: imageUrl || FALLBACK_NEWS_IMAGE,
+    title: article.title || '',
+    shortDescription: article.summary || '',
+    content: article.content || '',
+    imageUrl: article.imageUrl || '',
+    thumbnail: article.imageUrl || FALLBACK_NEWS_IMAGE,
     category: article.category || 'Tin tuc',
     author: article.createdBy || 'Ban quan tri',
-    createdAt: publishedAt,
+    createdAt: article.publishedAt || article.createdAt,
     updatedAt: article.updatedAt,
-    featured: Boolean(article.featured),
+    featured: !!article.featured,
     status: 'published',
   }
 }
 
-function matchesSearch(news, search) {
-  if (!search?.trim()) return true
-
-  const query = search.trim().toLowerCase()
-  return (
-    news.title.toLowerCase().includes(query) ||
-    news.shortDescription.toLowerCase().includes(query) ||
-    news.category.toLowerCase().includes(query) ||
-    news.author.toLowerCase().includes(query)
-  )
+function mapNewsList(list) {
+  return (list || []).map(mapNewsArticle).filter(Boolean)
 }
 
-function applyFilters(items, params = {}) {
-  let filtered = [...items]
+function filterNews(newsList, params = {}) {
+  return newsList.filter((news) => {
+    if (params.category && news.category !== params.category) {
+      return false
+    }
 
-  if (params.category) {
-    filtered = filtered.filter((item) => item.category === params.category)
-  }
+    if (
+      typeof params.featured === 'boolean' &&
+      news.featured !== params.featured
+    ) {
+      return false
+    }
 
-  if (typeof params.featured === 'boolean') {
-    filtered = filtered.filter((item) => item.featured === params.featured)
-  }
+    if (params.search) {
+      const keyword = params.search.toLowerCase()
 
-  if (params.search) {
-    filtered = filtered.filter((item) => matchesSearch(item, params.search))
-  }
+      const found =
+        news.title.toLowerCase().includes(keyword) ||
+        news.shortDescription.toLowerCase().includes(keyword) ||
+        news.category.toLowerCase().includes(keyword) ||
+        news.author.toLowerCase().includes(keyword)
 
-  return filtered
+      if (!found) return false
+    }
+
+    return true
+  })
 }
-
-const multipartHeaders = { 'Content-Type': 'multipart/form-data' }
 
 export const newsService = {
   async getAllNews(params = {}) {
-    const list = params.admin
-      ? await axiosClient.get(ENDPOINTS.news.adminList).then(unwrapResponse)
-      : await axiosClient.get(ENDPOINTS.news.all).then(unwrapResponse)
+    const endpoint = params.admin
+      ? ENDPOINTS.news.adminList
+      : ENDPOINTS.news.all
 
-    const mapped = (Array.isArray(list) ? list : []).map(mapNewsArticle).filter(Boolean)
-    return { data: applyFilters(mapped, params) }
+    const list = await axiosClient.get(endpoint).then(unwrapResponse)
+
+    return {
+      data: filterNews(mapNewsList(list), params),
+    }
   },
 
   async getNewsById(id) {
-    const article = await axiosClient.get(ENDPOINTS.news.byId(id)).then(unwrapResponse)
-    const mapped = mapNewsArticle(article)
-    if (!mapped) throw new Error('News not found')
-    return { data: mapped }
+    const article = await axiosClient
+      .get(ENDPOINTS.news.byId(id))
+      .then(unwrapResponse)
+
+    return {
+      data: mapNewsArticle(article),
+    }
+  },
+
+  async getAdminNewsById(id) {
+    const article = await axiosClient
+      .get(ENDPOINTS.news.adminById(id))
+      .then(unwrapResponse)
+
+    return {
+      data: mapNewsArticle(article),
+    }
   },
 
   async getFeaturedNews(limit = 3) {
     const list = await axiosClient
-      .get(ENDPOINTS.news.list, { params: { featured: true } })
+      .get(ENDPOINTS.news.list, {
+        params: { featured: true },
+      })
       .then(unwrapResponse)
 
-    const mapped = (Array.isArray(list) ? list : []).map(mapNewsArticle).filter(Boolean)
-    return { data: mapped.slice(0, limit) }
+    return {
+      data: mapNewsList(list).slice(0, limit),
+    }
   },
 
   async getRelatedNews(newsId, limit = 3) {
-    const current = await axiosClient.get(ENDPOINTS.news.byId(newsId)).then(unwrapResponse)
-    const category = current?.category
+    const current = await axiosClient
+      .get(ENDPOINTS.news.byId(newsId))
+      .then(unwrapResponse)
 
-    const list = category
-      ? await axiosClient.get(ENDPOINTS.news.list, { params: { category } }).then(unwrapResponse)
+    const list = current?.category
+      ? await axiosClient
+          .get(ENDPOINTS.news.list, {
+            params: { category: current.category },
+          })
+          .then(unwrapResponse)
       : await axiosClient.get(ENDPOINTS.news.all).then(unwrapResponse)
 
-    const mapped = (Array.isArray(list) ? list : [])
-      .map(mapNewsArticle)
-      .filter((item) => item && item.id !== String(newsId))
-
-    return { data: mapped.slice(0, limit) }
-  },
-
-  async getAdminNewsById(id) {
-    const article = await axiosClient.get(ENDPOINTS.news.adminById(id)).then(unwrapResponse)
-    const mapped = mapNewsArticle(article)
-    if (!mapped) throw new Error('News not found')
-    return { data: mapped }
+    return {
+      data: mapNewsList(list)
+        .filter((item) => item.id !== String(newsId))
+        .slice(0, limit),
+    }
   },
 
   async createNews(payload, imageFile) {
     const body = {
       title: payload.title,
-      summary: payload.summary ?? payload.shortDescription ?? '',
+      summary: payload.summary || payload.shortDescription || '',
       content: payload.content,
       category: payload.category,
-      featured: Boolean(payload.featured),
-      publishedAt: payload.publishedAt ?? new Date().toISOString().slice(0, 19),
+      featured: !!payload.featured,
+      publishedAt:
+        payload.publishedAt ||
+        new Date().toISOString().slice(0, 19),
     }
 
-    if (imageFile) {
-      const article = await axiosClient
-        .post(ENDPOINTS.news.adminList, buildNewsFormData(body, imageFile), {
-          headers: multipartHeaders,
-        })
-        .then(unwrapResponse)
-      return { data: mapNewsArticle(article) }
-    }
+    const article = imageFile
+      ? await axiosClient
+          .post(
+            ENDPOINTS.news.adminList,
+            buildNewsFormData(body, imageFile),
+            { headers: multipartHeaders }
+          )
+          .then(unwrapResponse)
+      : await axiosClient
+          .post(ENDPOINTS.news.adminList, body)
+          .then(unwrapResponse)
 
-    const article = await axiosClient.post(ENDPOINTS.news.adminList, body).then(unwrapResponse)
-    return { data: mapNewsArticle(article) }
+    return {
+      data: mapNewsArticle(article),
+    }
   },
 
   async updateNews(id, payload, imageFile) {
     const body = {
       title: payload.title,
-      summary: payload.summary ?? payload.shortDescription ?? '',
+      summary: payload.summary || payload.shortDescription || '',
       content: payload.content,
       category: payload.category,
-      featured: Boolean(payload.featured),
+      featured: !!payload.featured,
     }
 
-    if (imageFile) {
-      const article = await axiosClient
-        .put(ENDPOINTS.news.adminById(id), buildNewsFormData(body, imageFile), {
-          headers: multipartHeaders,
-        })
-        .then(unwrapResponse)
-      return { data: mapNewsArticle(article) }
-    }
+    const article = imageFile
+      ? await axiosClient
+          .put(
+            ENDPOINTS.news.adminById(id),
+            buildNewsFormData(body, imageFile),
+            { headers: multipartHeaders }
+          )
+          .then(unwrapResponse)
+      : await axiosClient
+          .put(ENDPOINTS.news.adminById(id), body)
+          .then(unwrapResponse)
 
-    const article = await axiosClient.put(ENDPOINTS.news.adminById(id), body).then(unwrapResponse)
-    return { data: mapNewsArticle(article) }
+    return {
+      data: mapNewsArticle(article),
+    }
   },
 
   async deleteNews(id) {
-    await axiosClient.delete(ENDPOINTS.news.adminById(id)).then(unwrapResponse)
+    await axiosClient
+      .delete(ENDPOINTS.news.adminById(id))
+      .then(unwrapResponse)
   },
 }

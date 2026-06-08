@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { User, Edit2, Upload, Save, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { User, Edit2, Save, X } from "lucide-react";
 import { HorseOwnerLayout } from "./HorseOwnerLayout";
 import {
   GlassCard,
@@ -12,21 +12,68 @@ import {
   HorseOwnerProfileField,
   HorseOwnerProfileValue,
 } from "./components/HorseOwnerProfileField";
+import ChangePasswordModal from "@/components/profile/ChangePasswordModal";
+import { useAuthStore } from "@/store/authStore";
+import { userService } from "@/services/userService";
+import { getApiErrorMessage } from "@/utils/apiError";
+
+function formatDate(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleDateString("vi-VN");
+  } catch {
+    return "—";
+  }
+}
+
+function buildFormFromUser(user) {
+  return {
+    fullName: user?.fullName || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    location: user?.location || "",
+  };
+}
 
 export function HorseOwnerProfile() {
+  const user = useAuthStore((s) => s.user);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({
-    name: "Nguyễn Chủ Ngựa",
-    email: "chungnua@horseracing.vn",
-    phone: "0901234567",
-    address: "123 Nguyễn Huệ, Q.1, TP.HCM",
-    idCard: "CMND: 012345678",
-    bio: "Chủ sở hữu đội đua ngựa chuyên nghiệp với hơn 10 năm kinh nghiệm trong ngành đua ngựa Việt Nam.",
-  });
+  const [saving, setSaving] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [form, setForm] = useState(() => buildFormFromUser(user));
 
-  const handleSave = () => {
-    toast.success("Cập nhật hồ sơ thành công");
+  useEffect(() => {
+    fetchProfile()
+      .then((fresh) => setForm(buildFormFromUser(fresh)))
+      .catch(() => {});
+  }, [fetchProfile]);
+
+  const displayName = user?.fullName || user?.username || "Chủ ngựa";
+  const avatarLetter = displayName.charAt(0).toUpperCase();
+
+  const handleCancel = () => {
+    setForm(buildFormFromUser(user));
     setEditing(false);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await userService.updateProfile({
+        fullName: form.fullName.trim() || null,
+        phone: form.phone.trim() || null,
+        location: form.location.trim() || null,
+      });
+      const fresh = await fetchProfile();
+      setForm(buildFormFromUser(fresh));
+      setEditing(false);
+      toast.success("Cập nhật hồ sơ thành công");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -36,11 +83,11 @@ export function HorseOwnerProfile() {
       actions={
         editing ? (
           <>
-            <GhostButton icon={X} onClick={() => setEditing(false)}>
+            <GhostButton icon={X} onClick={handleCancel} disabled={saving}>
               Hủy
             </GhostButton>
-            <PrimaryButton icon={Save} onClick={handleSave}>
-              Lưu thay đổi
+            <PrimaryButton icon={Save} onClick={handleSave} disabled={saving}>
+              {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </PrimaryButton>
           </>
         ) : (
@@ -53,39 +100,23 @@ export function HorseOwnerProfile() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <GlassCard className="p-6 flex flex-col items-center text-center">
           <div className="relative mb-4">
-            <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-[#D4A017]/30 to-[#0F1E3A] flex items-center justify-center text-5xl font-bold text-[#D4A017] border-2 border-[#D4A017]/30">
-              N
+            <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-[#D4A017]/30 to-[#0F1E3A] flex items-center justify-center text-5xl font-bold text-[#D4A017] border-2 border-[#D4A017]/30 overflow-hidden">
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={displayName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                avatarLetter
+              )}
             </div>
-            <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#D4A017] rounded-xl flex items-center justify-center shadow-lg shadow-[#D4A017]/30">
-              <Upload className="w-4 h-4 text-white" />
-            </button>
           </div>
-          <h2 className="font-bold text-white text-lg">{form.name}</h2>
-          <p className="text-sm text-[#D4A017] font-semibold mt-1">
-            Horse Owner
+          <h2 className="font-bold text-white text-lg">{displayName}</h2>
+          <p className="text-sm text-[#D4A017] font-semibold mt-1">Horse Owner</p>
+          <p className="text-xs text-white/50 mt-2">
+            Thành viên từ {formatDate(user?.createdAt)}
           </p>
-          <p className="text-xs text-white/50 mt-2">Thành viên từ 01/2020</p>
-          <div className="mt-5 w-full space-y-3">
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Tổng ngựa</span>
-              <span className="text-white font-bold">3</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Giải đã tham gia</span>
-              <span className="text-white font-bold">12</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Tổng chiến thắng</span>
-              <span className="text-[#D4A017] font-bold">25</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Tổng tiền thưởng</span>
-              <span className="text-emerald-300 font-bold">85.000.000đ</span>
-            </div>
-          </div>
-          <button className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs text-white/60 transition-all">
-            <Upload className="w-3.5 h-3.5" /> Upload giấy tờ
-          </button>
         </GlassCard>
 
         <div className="lg:col-span-2 space-y-4">
@@ -98,24 +129,19 @@ export function HorseOwnerProfile() {
               <HorseOwnerProfileField label="Họ và tên">
                 {editing ? (
                   <TextInput
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  />
-                ) : (
-                  <HorseOwnerProfileValue>{form.name}</HorseOwnerProfileValue>
-                )}
-              </HorseOwnerProfileField>
-              <HorseOwnerProfileField label="Email">
-                {editing ? (
-                  <TextInput
-                    value={form.email}
+                    value={form.fullName}
                     onChange={(e) =>
-                      setForm({ ...form, email: e.target.value })
+                      setForm({ ...form, fullName: e.target.value })
                     }
                   />
                 ) : (
-                  <HorseOwnerProfileValue>{form.email}</HorseOwnerProfileValue>
+                  <HorseOwnerProfileValue>
+                    {form.fullName || "—"}
+                  </HorseOwnerProfileValue>
                 )}
+              </HorseOwnerProfileField>
+              <HorseOwnerProfileField label="Email">
+                <HorseOwnerProfileValue>{form.email || "—"}</HorseOwnerProfileValue>
               </HorseOwnerProfileField>
               <HorseOwnerProfileField label="Số điện thoại">
                 {editing ? (
@@ -126,89 +152,51 @@ export function HorseOwnerProfile() {
                     }
                   />
                 ) : (
-                  <HorseOwnerProfileValue>{form.phone}</HorseOwnerProfileValue>
-                )}
-              </HorseOwnerProfileField>
-              <HorseOwnerProfileField label="CMND/CCCD">
-                {editing ? (
-                  <TextInput
-                    value={form.idCard}
-                    onChange={(e) =>
-                      setForm({ ...form, idCard: e.target.value })
-                    }
-                  />
-                ) : (
-                  <HorseOwnerProfileValue>{form.idCard}</HorseOwnerProfileValue>
+                  <HorseOwnerProfileValue>{form.phone || "—"}</HorseOwnerProfileValue>
                 )}
               </HorseOwnerProfileField>
               <HorseOwnerProfileField label="Địa chỉ" className="sm:col-span-2">
                 {editing ? (
                   <TextInput
-                    value={form.address}
+                    value={form.location}
                     onChange={(e) =>
-                      setForm({ ...form, address: e.target.value })
+                      setForm({ ...form, location: e.target.value })
                     }
                   />
                 ) : (
                   <HorseOwnerProfileValue>
-                    {form.address}
+                    {form.location || "—"}
                   </HorseOwnerProfileValue>
-                )}
-              </HorseOwnerProfileField>
-              <HorseOwnerProfileField
-                label="Giới thiệu"
-                className="sm:col-span-2"
-              >
-                {editing ? (
-                  <textarea
-                    value={form.bio}
-                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4A017] resize-none"
-                  />
-                ) : (
-                  <HorseOwnerProfileValue>{form.bio}</HorseOwnerProfileValue>
                 )}
               </HorseOwnerProfileField>
             </div>
           </GlassCard>
+
           <GlassCard className="p-6">
             <h3 className="font-bold text-white mb-5">Bảo mật tài khoản</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-white/[0.04] rounded-xl">
-                <div>
-                  <div className="text-sm font-semibold text-white">
-                    Mật khẩu
-                  </div>
-                  <div className="text-xs text-white/50">
-                    Cập nhật lần cuối: 01/2026
-                  </div>
+            <div className="flex items-center justify-between p-3 bg-white/[0.04] rounded-xl">
+              <div>
+                <div className="text-sm font-semibold text-white">Mật khẩu</div>
+                <div className="text-xs text-white/50">
+                  Cập nhật lần cuối: {formatDate(user?.updatedAt)}
                 </div>
-                <button
-                  onClick={() => toast.success("Đã gửi email đổi mật khẩu")}
-                  className="text-xs text-[#D4A017] hover:underline font-semibold"
-                >
-                  Đổi mật khẩu
-                </button>
               </div>
-              <div className="flex items-center justify-between p-3 bg-white/[0.04] rounded-xl">
-                <div>
-                  <div className="text-sm font-semibold text-white">
-                    Xác thực 2 bước
-                  </div>
-                  <div className="text-xs text-white/50">Chưa bật</div>
-                </div>
-                <button
-                  onClick={() => toast.success("Đã bật xác thực 2 bước")}
-                  className="text-xs text-[#D4A017] hover:underline font-semibold"
-                >
-                  Bật ngay
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(true)}
+                className="text-xs text-[#D4A017] hover:underline font-semibold"
+              >
+                Đổi mật khẩu
+              </button>
             </div>
           </GlassCard>
         </div>
       </div>
+
+      <ChangePasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </HorseOwnerLayout>
   );
 }

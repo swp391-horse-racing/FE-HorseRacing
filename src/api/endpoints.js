@@ -8,6 +8,7 @@ export const ENDPOINTS = {
     facebook: '/auth/facebook',
     forgotPassword: '/auth/forgot-password',
     resetPassword: '/auth/reset-password',
+    updatePassword: '/auth/password',
   },
   users: {
     byId: (id) => `/users/${id}`,
