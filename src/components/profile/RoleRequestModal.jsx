@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FileText, Upload, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { ROLE_LABELS } from '@/constants/roleApplication'
+import {
+  getFileHint,
+  sanitizeNumberInput,
+  sanitizePhoneInput,
+  validateFileField,
+  validateNumberField,
+  validateRoleApplication,
+} from '@/utils/roleApplicationValidation'
 
 const ROLE_FIELDS = {
   SPECTATOR: [
     { name: 'displayName', label: 'Họ và tên hiển thị', required: true, placeholder: 'Nguyễn Văn A' },
-    { name: 'phone', label: 'Số điện thoại', type: 'tel', placeholder: '+84 ...' },
+    { name: 'phone', label: 'Số điện thoại', type: 'tel', placeholder: '+84 901234567' },
     { name: 'location', label: 'Địa chỉ / Khu vực', placeholder: 'TP. Hồ Chí Minh' },
     { name: 'favoriteHorseBreed', label: 'Giống ngựa yêu thích', placeholder: 'Arabian, Thoroughbred...' },
     { name: 'bio', label: 'Giới thiệu ngắn', type: 'textarea', placeholder: 'Lý do bạn muốn trở thành khán giả chính thức' },
@@ -13,21 +22,20 @@ const ROLE_FIELDS = {
   OWNER: [
     { name: 'stableName', label: 'Tên trang trại / Chuồng ngựa', required: true, placeholder: 'Trang trại Phú Mỹ' },
     { name: 'address', label: 'Địa chỉ trang trại', required: true, placeholder: 'Số nhà, đường, quận, tỉnh' },
-    { name: 'experienceYears', label: 'Số năm kinh nghiệm', type: 'number', placeholder: '3' },
+    { name: 'experienceYears', label: 'Số năm kinh nghiệm', type: 'number', placeholder: '3', min: 0, max: 80 },
     { name: 'bio', label: 'Giới thiệu thêm', type: 'textarea' },
     {
       name: 'verificationDocument',
       label: 'Giấy chứng nhận / Xác minh sở hữu',
       type: 'file',
       required: true,
-      hint: 'PDF hoặc ảnh (JPG, PNG)',
     },
   ],
   JOCKEY: [
     { name: 'licenseNumber', label: 'Số giấy phép Jockey', required: true, placeholder: 'JK-XXXX' },
-    { name: 'experienceYears', label: 'Số năm kinh nghiệm', type: 'number', placeholder: '5' },
-    { name: 'heightCm', label: 'Chiều cao (cm)', type: 'number', placeholder: '165' },
-    { name: 'weightKg', label: 'Cân nặng (kg)', type: 'number', placeholder: '55' },
+    { name: 'experienceYears', label: 'Số năm kinh nghiệm', type: 'number', placeholder: '5', min: 0, max: 80 },
+    { name: 'heightCm', label: 'Chiều cao (cm)', type: 'number', placeholder: '165', min: 100, max: 250 },
+    { name: 'weightKg', label: 'Cân nặng (kg)', type: 'number', placeholder: '55', min: 30, max: 200 },
     { name: 'bio', label: 'Giới thiệu', type: 'textarea' },
     { name: 'awards', label: 'Thành tích / Giải thưởng', type: 'textarea' },
     { name: 'specialties', label: 'Chuyên môn', type: 'textarea' },
@@ -37,7 +45,7 @@ const ROLE_FIELDS = {
   ],
   REFEREE: [
     { name: 'licenseNumber', label: 'Số giấy chứng nhận trọng tài', required: true, placeholder: 'RF-XXXX' },
-    { name: 'experienceYears', label: 'Số năm kinh nghiệm', type: 'number', placeholder: '8' },
+    { name: 'experienceYears', label: 'Số năm kinh nghiệm', type: 'number', placeholder: '8', min: 0, max: 80 },
     { name: 'specialty', label: 'Chuyên môn', required: true, placeholder: 'Đua ngựa tốc độ, vượt rào...' },
     { name: 'bio', label: 'Giới thiệu', type: 'textarea' },
     {
@@ -45,7 +53,6 @@ const ROLE_FIELDS = {
       label: 'Chứng chỉ đào tạo trọng tài',
       type: 'file',
       required: true,
-      hint: 'PDF hoặc ảnh',
     },
   ],
 }
@@ -87,10 +94,16 @@ function FilePreview({ file }) {
   )
 }
 
+function FieldError({ message }) {
+  if (!message) return null
+  return <p className="mt-1.5 text-xs font-medium text-red-600">{message}</p>
+}
+
 export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) {
   const fields = ROLE_FIELDS[role] || []
   const [values, setValues] = useState(() => buildInitialValues(role, fullName))
   const [files, setFiles] = useState({})
+  const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -99,10 +112,57 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
     [fields],
   )
 
-  const update = (name, value) => setValues((v) => ({ ...v, [name]: value }))
+  const setFieldError = (name, message) => {
+    setErrors((prev) => {
+      const next = { ...prev }
+      if (message) next[name] = message
+      else delete next[name]
+      return next
+    })
+  }
+
+  const update = (name, value) => {
+    setValues((v) => ({ ...v, [name]: value }))
+    setFieldError(name, '')
+  }
+
+  const handleTextChange = (field, rawValue) => {
+    if (field.name === 'phone') {
+      update(field.name, sanitizePhoneInput(rawValue))
+      return
+    }
+    update(field.name, rawValue)
+  }
+
+  const handleNumberChange = (field, rawValue) => {
+    const sanitized = sanitizeNumberInput(rawValue)
+    if (sanitized === null) return
+    update(field.name, sanitized)
+    if (sanitized !== '') {
+      setFieldError(field.name, validateNumberField(field.name, sanitized))
+    }
+  }
+
+  const handleFileChange = (field, file) => {
+    if (!file) return
+    const fileError = validateFileField(field.name, file)
+    if (fileError) {
+      setFieldError(field.name, fileError)
+      return
+    }
+    setFiles((prev) => ({ ...prev, [field.name]: file }))
+    setFieldError(field.name, '')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const result = validateRoleApplication(role, values, files, fields)
+    setErrors(result.errors)
+    if (!result.valid) {
+      toast.error('Vui lòng kiểm tra lại các trường được đánh dấu đỏ')
+      return
+    }
+
     setSubmitting(true)
     setUploading(true)
     try {
@@ -113,6 +173,13 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
       setSubmitting(false)
     }
   }
+
+  const inputClass = (name) =>
+    `w-full px-4 py-3 bg-[#FAFAFA] border rounded-xl text-[#1E3A5F] focus:outline-none focus:ring-2 focus:ring-[#D4A017]/20 ${
+      errors[name]
+        ? 'border-red-400 focus:border-red-400'
+        : 'border-gray-200 focus:border-[#D4A017]'
+    }`
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -141,7 +208,7 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-5" noValidate>
           {fields.map((f) => (
             <div key={f.name}>
               <label className="block text-sm font-semibold text-[#1E3A5F] mb-2">
@@ -149,47 +216,76 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
               </label>
               {f.type === 'textarea' ? (
                 <textarea
-                  required={f.required}
                   placeholder={f.placeholder}
                   rows={3}
+                  maxLength={f.name === 'awards' ? 2000 : 1000}
                   value={values[f.name] || ''}
-                  onChange={(e) => update(f.name, e.target.value)}
-                  className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[#1E3A5F] focus:outline-none focus:border-[#D4A017] focus:ring-2 focus:ring-[#D4A017]/20 resize-none"
+                  onChange={(e) => handleTextChange(f, e.target.value)}
+                  className={`${inputClass(f.name)} resize-none`}
                 />
               ) : f.type === 'file' ? (
                 <>
-                  <label className="flex items-center gap-3 px-4 py-3 bg-[#FAFAFA] border border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#D4A017] hover:bg-[#FFF8F0] transition-all">
+                  <label
+                    className={`flex items-center gap-3 px-4 py-3 bg-[#FAFAFA] border border-dashed rounded-xl cursor-pointer hover:border-[#D4A017] hover:bg-[#FFF8F0] transition-all ${
+                      errors[f.name] ? 'border-red-400' : 'border-gray-300'
+                    }`}
+                  >
                     <Upload className="w-5 h-5 text-[#D4A017]" />
                     <span className="text-[#1E3A5F]/70 text-sm flex-1 truncate">
                       {files[f.name]?.name || 'Chọn file để tải lên...'}
                     </span>
                     <input
                       type="file"
-                      required={f.required && !files[f.name]}
-                      accept="image/*,application/pdf"
+                      accept={f.name === 'avatar' || f.name === 'achievements' ? 'image/jpeg,image/png,image/webp' : 'image/jpeg,image/png,image/webp,application/pdf'}
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0]
-                        if (file) setFiles((prev) => ({ ...prev, [f.name]: file }))
+                        handleFileChange(f, file)
+                        e.target.value = ''
                       }}
                     />
                   </label>
                   <FilePreview file={files[f.name]} />
                   <p className="mt-1 text-xs text-[#1E3A5F]/50">
-                    File sẽ được server tải lên khi gửi hồ sơ.
+                    File sẽ được server tải lên khi gửi hồ sơ. {getFileHint(f.name)}
                   </p>
                 </>
-              ) : (
+              ) : f.type === 'number' ? (
                 <input
-                  type={f.type || 'text'}
-                  required={f.required}
+                  type="number"
+                  inputMode="numeric"
+                  min={f.min ?? 0}
+                  max={f.max}
+                  step={f.name === 'weightKg' || f.name === 'heightCm' ? '0.1' : '1'}
                   placeholder={f.placeholder}
                   value={values[f.name] || ''}
-                  onChange={(e) => update(f.name, e.target.value)}
-                  className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[#1E3A5F] focus:outline-none focus:border-[#D4A017] focus:ring-2 focus:ring-[#D4A017]/20"
+                  onChange={(e) => handleNumberChange(f, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+                  }}
+                  className={inputClass(f.name)}
+                />
+              ) : f.type === 'tel' ? (
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  placeholder={f.placeholder}
+                  maxLength={30}
+                  value={values[f.name] || ''}
+                  onChange={(e) => handleTextChange(f, e.target.value)}
+                  className={inputClass(f.name)}
+                />
+              ) : (
+                <input
+                  type="text"
+                  placeholder={f.placeholder}
+                  value={values[f.name] || ''}
+                  onChange={(e) => handleTextChange(f, e.target.value)}
+                  className={inputClass(f.name)}
                 />
               )}
               {f.hint && <p className="mt-1 text-xs text-[#1E3A5F]/60">{f.hint}</p>}
+              <FieldError message={errors[f.name]} />
             </div>
           ))}
 
