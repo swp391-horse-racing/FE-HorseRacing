@@ -4,6 +4,7 @@ import { JockeyLayout } from "./JockeyLayout";
 import { GlassCard, Pill, PrimaryButton } from "../admin/AdminLayout";
 import { schedules as initSchedules } from "./data";
 import { toast } from "sonner";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 export function JockeySchedules() {
   const [schedules, setSchedules] = useState(initSchedules);
@@ -68,12 +69,10 @@ export function JockeySchedules() {
               <div className="flex items-start gap-5">
                 <div className="shrink-0 text-center p-3 bg-[#D4A017]/10 border border-[#D4A017]/20 rounded-xl w-20">
                   <div className="text-[10px] text-[#D4A017] uppercase tracking-wider font-bold">
-                    {new Date(s.date).toLocaleDateString("vi-VN", {
-                      month: "short",
-                    })}
+                    {formatDisplayDate(s.date).slice(0, 5)}
                   </div>
                   <div className="text-2xl font-bold text-[#D4A017]">
-                    {new Date(s.date).getDate()}
+                    {formatDisplayDate(s.date).slice(6)}
                   </div>
                   <div className="text-sm font-bold text-white">{s.time}</div>
                 </div>

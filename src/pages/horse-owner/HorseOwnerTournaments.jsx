@@ -21,13 +21,10 @@ import {
   PrimaryButton,
 } from "../admin/AdminLayout";
 import { HorseOwnerInfoRow } from "./components/HorseOwnerInfoRow";
-
-function formatDate(value) {
-  return value || "-";
-}
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 function formatRegistrationRange(tournament) {
-  return `${formatDate(tournament.registrationOpenDate)} → ${formatDate(
+  return `${formatDisplayDate(tournament.registrationOpenDate)} → ${formatDisplayDate(
     tournament.registrationCloseDate,
   )}`;
 }
@@ -175,7 +172,7 @@ export function HorseOwnerTournaments() {
                   />
                   <HorseOwnerInfoRow
                     icon={Calendar}
-                    text={`${formatDate(tournament.startDate)} → ${formatDate(
+                    text={`${formatDisplayDate(tournament.startDate)} → ${formatDisplayDate(
                       tournament.endDate,
                     )}`}
                   />

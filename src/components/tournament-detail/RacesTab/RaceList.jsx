@@ -4,6 +4,7 @@ import Card from "@/components/ui/Card";
 import { primaryButton } from "@/components/ui/styles";
 import { toneForStatus } from "../utils";
 import { formatDistance } from "./helpers";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 export default function RaceList({ races, selectedId, onAdd, onSelect }) {
   return (
@@ -30,7 +31,7 @@ export default function RaceList({ races, selectedId, onAdd, onSelect }) {
           const displayName = race.name?.trim() || "Cuộc đua mới";
           const scheduleText =
             race.date || race.time
-              ? `${race.date || "Chưa chọn ngày"} · ${race.time || "--:--"}`
+              ? `${formatDisplayDate(race.date, "Chưa chọn ngày")} · ${race.time || "--:--"}`
               : "Chưa cấu hình lịch";
           const maxHorses = Number(race.maxHorses || 0);
           const registered = Number(race.registered || 0);

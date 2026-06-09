@@ -19,6 +19,7 @@ import { GlassCard, Pill } from "../admin/AdminLayout";
 import { JockeyLayout } from "./JockeyLayout";
 import { invitations, schedules, fmt } from "./data";
 import { JockeyInfoRow } from "./components/JockeyInfoRow";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 const DEFAULT_STATUS_FILTERS = [
   "Tất cả",
@@ -29,10 +30,6 @@ const DEFAULT_STATUS_FILTERS = [
   "Đang diễn ra",
   "Đã kết thúc",
 ];
-
-function formatDate(value) {
-  return value || "-";
-}
 
 function formatCapacity(tournament) {
   const maxHorses = Number(tournament.maxHorses ?? 0);
@@ -232,13 +229,13 @@ export function JockeyTournaments() {
                     />
                     <JockeyInfoRow
                       icon={Calendar}
-                      text={`${formatDate(tournament.startDate)} → ${formatDate(
+                      text={`${formatDisplayDate(tournament.startDate)} → ${formatDisplayDate(
                         tournament.endDate,
                       )}`}
                     />
                     <JockeyInfoRow
                       icon={Clock}
-                      text={`Hạn đăng ký: ${formatDate(tournament.deadline)}`}
+                      text={`Hạn đăng ký: ${formatDisplayDate(tournament.deadline)}`}
                       highlight
                     />
                     <JockeyInfoRow

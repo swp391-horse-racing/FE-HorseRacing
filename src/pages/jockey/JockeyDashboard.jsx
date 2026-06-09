@@ -30,6 +30,7 @@ import {
 import { jockeyService } from "@/services/jockeyService";
 import { JockeyQuickAction } from "./components/JockeyQuickAction";
 import { JockeyStatRow } from "./components/JockeyStatRow";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 export function JockeyDashboard() {
   const [invitations, setInvitations] = useState([]);
@@ -150,7 +151,7 @@ export function JockeyDashboard() {
                         {s.race} · Ngựa: {s.horse} · Lane #{s.laneNo}
                       </div>
                       <div className="text-[11px] text-white/40 mt-0.5">
-                        {s.date} · {s.location}
+                        {formatDisplayDate(s.date)} · {s.location}
                       </div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-white/30 shrink-0" />
@@ -265,7 +266,7 @@ export function JockeyDashboard() {
                     <div className="text-sm font-bold text-emerald-300">
                       +{fmt(r.prize)}
                     </div>
-                    <div className="text-[11px] text-white/40">{r.date}</div>
+                    <div className="text-[11px] text-white/40">{formatDisplayDate(r.date)}</div>
                   </div>
                 </div>
               ))}

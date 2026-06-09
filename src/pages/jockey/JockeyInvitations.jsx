@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { formatDisplayDateTime } from "@/utils/dateFormat";
 import { jockeyService } from "@/services/jockeyService";
 import { JockeyLayout } from "./JockeyLayout";
 import { GlassCard, Pill, PrimaryButton } from "../admin/AdminLayout";
@@ -19,6 +20,7 @@ import { JockeyInfoRow } from "./components/JockeyInfoRow";
 const FILTERS = ["Tất cả", "Chờ phản hồi", "Đã nhận", "Từ chối", "Đã hủy"];
 
 function formatDate(value) {
+  return formatDisplayDateTime(value, "Chưa cập nhật");
   if (!value) return "Chưa cập nhật";
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",

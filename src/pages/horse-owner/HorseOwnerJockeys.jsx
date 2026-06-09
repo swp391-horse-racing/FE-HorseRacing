@@ -5,6 +5,7 @@ import { horseService } from "@/services/horseService";
 import { jockeyService } from "@/services/jockeyService";
 import { tournamentService } from "@/services/tournamentService";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { formatDisplayDate, formatDisplayDateTime } from "@/utils/dateFormat";
 import {
   GlassCard,
   GhostButton,
@@ -52,6 +53,7 @@ function mergeJockeyAccountsWithProfiles(accounts, approvedProfiles) {
 }
 
 function formatRaceDate(value) {
+  return formatDisplayDateTime(value, "Chưa cập nhật");
   if (!value) return "Chưa cập nhật";
   return String(value).replace("T", " · ").slice(0, 18);
 }
@@ -71,7 +73,7 @@ function buildRaceOptions(tournaments) {
       .map((race) => ({
         id: String(race.id),
         label: `${tournament.name} · ${race.name}`,
-        meta: `${race.date || "Chưa cập nhật"} ${race.time || ""}`.trim(),
+        meta: `${formatDisplayDate(race.date, "Chưa cập nhật")} ${race.time || ""}`.trim(),
       })),
   );
 }

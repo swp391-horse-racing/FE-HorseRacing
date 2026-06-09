@@ -11,6 +11,7 @@ import {
   Users,
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import { formatDisplayDate } from '@/utils/dateFormat'
 
 const statistics = [
   { label: 'Tổng giải đấu', value: '4', delta: '+12%', icon: Trophy, tone: 'gold' },
@@ -121,7 +122,7 @@ export default function AdminDashboardPage() {
                 <span className="block truncate text-xl font-bold">{tournament.name}</span>
                 <span className="mt-2 flex items-center gap-2 text-sm text-white/50">
                   <CalendarDays className="h-4 w-4" />
-                  {tournament.date}
+                  {formatDisplayDate(tournament.date)}
                   <span>·</span>
                   {tournament.races} cuộc đua
                 </span>
