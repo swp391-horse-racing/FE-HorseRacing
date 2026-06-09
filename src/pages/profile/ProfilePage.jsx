@@ -26,8 +26,10 @@ import {
   hasPendingOtherRole,
 } from '@/utils/roleApplicationStatus'
 import { getRoleHomePath, hasApprovedRole, normalizeRole } from '@/utils/roleRedirect'
+import { formatDisplayDate } from '@/utils/dateFormat'
 
 function formatJoinDate(createdAt) {
+  return formatDisplayDate(createdAt, formatDisplayDate(new Date()))
   if (!createdAt) return new Date().toLocaleDateString('vi-VN')
   try {
     return new Date(createdAt).toLocaleDateString('vi-VN')

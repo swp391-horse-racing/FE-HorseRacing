@@ -10,6 +10,7 @@ import {
   metersFromDistance,
   shiftTime,
 } from "./helpers";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 export default function RaceInfo({ race, tournament, saving, onSave }) {
   const [draft, setDraft] = useState(race);
@@ -84,8 +85,8 @@ export default function RaceInfo({ race, tournament, saving, onSave }) {
             }}
           />
           <p className="mt-2 text-xs text-white/40">
-            Chỉ chọn trong thời gian mùa giải: {tournament.startDate} -{" "}
-            {tournament.endDate}.
+            Chỉ chọn trong thời gian mùa giải: {formatDisplayDate(tournament.startDate)} -{" "}
+            {formatDisplayDate(tournament.endDate)}.
           </p>
         </Field>
         <Field label="Giờ thi đấu">

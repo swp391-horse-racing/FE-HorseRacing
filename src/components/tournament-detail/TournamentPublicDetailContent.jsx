@@ -10,10 +10,7 @@ import {
 } from "lucide-react";
 import { GlassCard, Pill } from "@/pages/admin/AdminLayout";
 import { setTournamentBannerFallback } from "@/services/tournamentService";
-
-function formatDate(value) {
-  return value || "-";
-}
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 function formatMoney(value) {
   return new Intl.NumberFormat("vi-VN", {
@@ -64,7 +61,7 @@ export default function TournamentPublicDetailContent({ tournament, backTo }) {
               <HeroMeta icon={MapPin} text={tournament.location || "Chưa cập nhật địa điểm"} />
               <HeroMeta
                 icon={Calendar}
-                text={`${formatDate(tournament.startDate)} → ${formatDate(tournament.endDate)}`}
+                text={`${formatDisplayDate(tournament.startDate)} → ${formatDisplayDate(tournament.endDate)}`}
               />
               <HeroMeta icon={Users} text={`${formatCapacity(tournament)} đăng ký`} />
             </div>
@@ -75,7 +72,7 @@ export default function TournamentPublicDetailContent({ tournament, backTo }) {
       <section className="grid gap-4 md:grid-cols-3">
         <DetailStat label="Tổng giải thưởng" value={formatMoney(tournament.prizePool)} tone="gold" />
         <DetailStat label="Đăng ký" value={formatCapacity(tournament)} tone="green" />
-        <DetailStat label="Hạn đăng ký" value={formatDate(tournament.deadline)} tone="blue" />
+        <DetailStat label="Hạn đăng ký" value={formatDisplayDate(tournament.deadline)} tone="blue" />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
@@ -112,8 +109,8 @@ export default function TournamentPublicDetailContent({ tournament, backTo }) {
           <GlassCard className="p-5">
             <div className="mb-3 text-sm font-bold text-white">Thời gian đăng ký</div>
             <div className="space-y-3 text-sm text-white/60">
-              <InfoLine label="Mở đăng ký" value={formatDate(tournament.registrationOpenDate)} />
-              <InfoLine label="Kết thúc đăng ký" value={formatDate(tournament.registrationCloseDate)} />
+              <InfoLine label="Mở đăng ký" value={formatDisplayDate(tournament.registrationOpenDate)} />
+              <InfoLine label="Kết thúc đăng ký" value={formatDisplayDate(tournament.registrationCloseDate)} />
             </div>
           </GlassCard>
         </div>
@@ -132,7 +129,7 @@ function RaceCard({ race }) {
             <Pill tone="blue">{race.status}</Pill>
           </div>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/52">
-            <HeroMeta icon={Calendar} text={`${formatDate(race.date)} · ${race.time || "--:--"}`} />
+            <HeroMeta icon={Calendar} text={`${formatDisplayDate(race.date)} · ${race.time || "--:--"}`} />
             <HeroMeta icon={Route} text={race.distance || "Chưa cập nhật cự ly"} />
             <HeroMeta icon={MapPin} text={race.track || "Chưa cập nhật đường đua"} />
           </div>

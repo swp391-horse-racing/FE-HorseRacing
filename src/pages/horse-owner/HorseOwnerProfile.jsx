@@ -16,8 +16,10 @@ import ChangePasswordModal from "@/components/profile/ChangePasswordModal";
 import { useAuthStore } from "@/store/authStore";
 import { userService } from "@/services/userService";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 function formatDate(value) {
+  return formatDisplayDate(value, "—");
   if (!value) return "—";
   try {
     return new Date(value).toLocaleDateString("vi-VN");

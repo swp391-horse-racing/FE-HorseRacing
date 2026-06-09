@@ -2,6 +2,7 @@ import { BarChart3, Trophy, Medal, TrendingUp } from "lucide-react";
 import { JockeyLayout } from "./JockeyLayout";
 import { GlassCard, StatCard } from "../admin/AdminLayout";
 import { jockeyResults, jockeyProfile, fmt } from "./data";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 const positionColor = (pos) =>
   pos === 1
@@ -106,7 +107,7 @@ export function JockeyResults() {
                       +{fmt(r.prize)}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-sm text-white/50">{r.date}</td>
+                  <td className="px-5 py-4 text-sm text-white/50">{formatDisplayDate(r.date)}</td>
                 </tr>
               ))}
             </tbody>

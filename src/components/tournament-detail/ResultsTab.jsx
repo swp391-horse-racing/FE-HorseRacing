@@ -4,6 +4,7 @@ import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import { SimpleTable } from '@/components/ui/Panel'
 import { formatVnd, getPrizeAmountByRank, getTotalPrize, resultsFor, toneForStatus } from './utils'
+import { formatDisplayDate } from '@/utils/dateFormat'
 
 export default function ResultsTab({ tournament }) {
   const [expanded, setExpanded] = useState(tournament.races[0]?.id)
@@ -29,7 +30,7 @@ export default function ResultsTab({ tournament }) {
                   <Badge tone={toneForStatus(race.status)}>{race.status}</Badge>
                 </span>
                 <span className="text-sm text-white/55">
-                  {race.date} · {race.time} · Quán quân: {champion}
+                  {formatDisplayDate(race.date)} · {race.time} · Quán quân: {champion}
                 </span>
               </span>
               <span className="font-bold text-[#dda50e]">{formatVnd(getTotalPrize(race))}</span>

@@ -16,7 +16,7 @@ export default function HomePage() {
     {
       id: 1,
       name: 'Vietnam Grand Prix 2026',
-      date: '15 Tháng 6, 2026',
+      date: '06/15/2026',
       location: 'Sân đua Phú Thọ',
       prize: '5,000,000,000 VNĐ',
       participants: 24,
@@ -26,7 +26,7 @@ export default function HomePage() {
     {
       id: 2,
       name: 'Championship Cup 2026',
-      date: '22 Tháng 6, 2026',
+      date: '06/22/2026',
       location: 'Sân đua Vũng Tàu',
       prize: '3,500,000,000 VNĐ',
       participants: 20,
@@ -36,7 +36,7 @@ export default function HomePage() {
     {
       id: 3,
       name: 'Golden Stakes Classic',
-      date: '30 Tháng 6, 2026',
+      date: '06/30/2026',
       location: 'Sân đua Long Thành',
       prize: '4,200,000,000 VNĐ',
       participants: 18,

@@ -27,6 +27,7 @@ import {
 } from "./data";
 import { HorseOwnerQuickAction } from "./components/HorseOwnerQuickAction";
 import { HorseOwnerClipboardListIcon } from "./components/HorseOwnerClipboardListIcon";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 export function HorseOwnerDashboard() {
   const unread = ownerNotifications.filter((n) => !n.read).length;
@@ -136,7 +137,7 @@ export function HorseOwnerDashboard() {
                       </div>
                       <div className="text-[11px] text-white/50">
                         {reg.horse} · Jockey: {reg.jockey ?? "Chưa chọn"} ·{" "}
-                        {reg.raceDate}
+                        {formatDisplayDate(reg.raceDate)}
                       </div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-white/30 shrink-0" />
@@ -202,7 +203,7 @@ export function HorseOwnerDashboard() {
                     <div className="text-sm font-bold text-emerald-300">
                       +{fmt(res.prize)}
                     </div>
-                    <div className="text-[11px] text-white/40">{res.date}</div>
+                    <div className="text-[11px] text-white/40">{formatDisplayDate(res.date)}</div>
                   </div>
                 </div>
               ))}

@@ -3,6 +3,7 @@ import Card from '@/components/ui/Card'
 import StatCard from '@/components/ui/StatCard'
 import { SectionHeading } from '@/components/ui/Panel'
 import { formatVnd } from './utils'
+import { formatDisplayDate } from '@/utils/dateFormat'
 
 export default function OverviewTab({ tournament, totalPrize, totalRegistered }) {
   return (
@@ -19,11 +20,11 @@ export default function OverviewTab({ tournament, totalPrize, totalRegistered })
         <div className="mb-10 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
             <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/45">Mở đăng ký</p>
-            <p className="text-xl font-bold text-white">{tournament.registrationOpenDate || 'Chưa cập nhật'}</p>
+            <p className="text-xl font-bold text-white">{formatDisplayDate(tournament.registrationOpenDate, 'Chưa cập nhật')}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
             <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/45">Kết thúc đăng ký</p>
-            <p className="text-xl font-bold text-white">{tournament.registrationCloseDate || 'Chưa cập nhật'}</p>
+            <p className="text-xl font-bold text-white">{formatDisplayDate(tournament.registrationCloseDate, 'Chưa cập nhật')}</p>
           </div>
         </div>
 

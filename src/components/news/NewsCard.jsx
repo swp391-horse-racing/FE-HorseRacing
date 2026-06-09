@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Calendar } from 'lucide-react'
 import NewsImage from '@/components/news/NewsImage'
 import { NEWS_IMAGE_PRESETS } from '@/utils/cloudinary'
+import { formatDisplayDate } from '@/utils/dateFormat'
 
 function clampStyle(lines) {
   return {
@@ -13,6 +14,7 @@ function clampStyle(lines) {
 }
 
 function formatDate(dateString) {
+  return formatDisplayDate(dateString)
   return new Date(dateString).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: '2-digit',

@@ -6,8 +6,10 @@ import { newsService } from '@/services/newsService'
 import RelatedNews from '@/components/news/RelatedNews'
 import NewsImage from '@/components/news/NewsImage'
 import { NEWS_IMAGE_PRESETS } from '@/utils/cloudinary'
+import { formatDisplayDate } from '@/utils/dateFormat'
 
 function formatLongDate(dateString) {
+  return formatDisplayDate(dateString)
   return new Date(dateString).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: 'long',

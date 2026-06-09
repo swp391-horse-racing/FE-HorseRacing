@@ -3,6 +3,7 @@ import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import { Meta, PanelHeader } from '@/components/ui/Panel'
 import { formatVnd, getTotalPrize, toneForStatus } from './utils'
+import { formatDisplayDate } from '@/utils/dateFormat'
 
 export default function ScheduleTab({ tournament }) {
   return (
@@ -15,7 +16,7 @@ export default function ScheduleTab({ tournament }) {
             className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5 md:flex-row md:items-center"
           >
             <div className="w-28 shrink-0 text-center">
-              <div className="text-sm text-white/50">{race.date.slice(5)}</div>
+              <div className="text-sm text-white/50">{formatDisplayDate(race.date)}</div>
               <div className="text-2xl font-bold text-[#dda50e]">{race.time}</div>
             </div>
             <div className="hidden h-14 w-px bg-white/10 md:block" />

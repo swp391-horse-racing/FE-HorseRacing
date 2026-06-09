@@ -1,6 +1,7 @@
 import { Award, Crown, Grid3x3, Info, Trash2, Users } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { formatDistance } from "./helpers";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 const PANELS = [
   ["info", "Thông tin", Info],
@@ -19,7 +20,7 @@ export default function RaceHeader({
 }) {
   const displayName = race.name?.trim() || "Cuộc đua mới";
   const scheduleParts = [
-    race.date || "Chưa chọn ngày",
+    formatDisplayDate(race.date, "Chưa chọn ngày"),
     race.time || "--:--",
     formatDistance(race.distance) || "Chưa nhập cự ly",
   ];

@@ -1,6 +1,7 @@
 import axiosClient from '@/api/axiosClient'
 import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
+import { formatDisplayDateTime } from '@/utils/dateFormat'
 
 export const ROLE_LABELS = {
   USER: 'Người dùng',
@@ -24,6 +25,7 @@ const ROLE_APPLICATION_STATUS_LABELS = {
 }
 
 function formatDateTime(value) {
+  return formatDisplayDateTime(value, 'Chưa cập nhật')
   if (!value) return 'Chưa cập nhật'
 
   const date = new Date(value)

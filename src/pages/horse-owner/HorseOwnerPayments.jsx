@@ -3,6 +3,7 @@ import { HorseOwnerLayout } from "./HorseOwnerLayout";
 import { GlassCard, StatCard, Pill, PrimaryButton } from "../admin/AdminLayout";
 import { payments, fmt } from "./data";
 import { toast } from "sonner";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 function payTone(s) {
   if (s === "Đã thanh toán" || s === "Đã nhận") return "green";
@@ -154,7 +155,7 @@ export function HorseOwnerPayments() {
                     <Pill tone={payTone(p.status)}>{p.status}</Pill>
                   </td>
                   <td className="px-5 py-4 text-sm text-white/50">
-                    {p.date ?? "--"}
+                    {formatDisplayDate(p.date, "--")}
                   </td>
                   <td className="px-5 py-4 text-sm text-white/50">
                     {p.method ?? "--"}

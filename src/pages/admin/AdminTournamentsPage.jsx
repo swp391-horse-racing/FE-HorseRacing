@@ -21,6 +21,7 @@ import {
   tournamentService,
 } from "@/services/tournamentService";
 import { useApiCacheStore } from "@/store/apiCacheStore";
+import { formatDisplayDate } from "@/utils/dateFormat";
 
 const STATUS_TABS = [
   "Tất cả",
@@ -266,7 +267,7 @@ function StatusBadge({ status }) {
 
 function formatTournamentDate(value, label) {
   if (!value) return `${label}: -`;
-  return `${label}: ${value}`;
+  return `${label}: ${formatDisplayDate(value)}`;
 }
 
 function TournamentCard({ tournament }) {
@@ -363,8 +364,8 @@ function TournamentTable({ tournaments: rows }) {
                 <td className="px-7 py-5">
                   {tournament.location || "Chưa có địa điểm"}
                 </td>
-                <td className="px-7 py-5">{tournament.startDate || "-"}</td>
-                <td className="px-7 py-5">{tournament.endDate || "-"}</td>
+                <td className="px-7 py-5">{formatDisplayDate(tournament.startDate)}</td>
+                <td className="px-7 py-5">{formatDisplayDate(tournament.endDate)}</td>
                 <td className="px-7 py-5">{tournament.raceCount}</td>
                 <td className="px-7 py-5">
                   <StatusBadge status={tournament.status} />
