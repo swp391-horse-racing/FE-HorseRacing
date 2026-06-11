@@ -7,6 +7,7 @@ export const FILE_SIZE_LIMITS = {
 export const ALLOWED_MIME = {
   document: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
   image: ['image/jpeg', 'image/png', 'image/webp'],
+  kycImage: ['image/jpeg', 'image/png'],
 }
 
 const FILE_FIELD_KIND = {
@@ -142,4 +143,15 @@ export function getFileHint(fieldName) {
   const max = formatFileSize(FILE_SIZE_LIMITS[kind])
   if (kind === 'image') return `Ảnh JPG, PNG, WEBP — tối đa ${max}`
   return `PDF hoặc ảnh JPG, PNG, WEBP — tối đa ${max}`
+}
+
+export function validateKycImage(file) {
+  if (!file) return 'Vui lòng chọn ảnh'
+  if (!ALLOWED_MIME.kycImage.includes(file.type)) {
+    return 'Chỉ chấp nhận ảnh JPEG hoặc PNG'
+  }
+  if (file.size > FILE_SIZE_LIMITS.image) {
+    return `Dung lượng tối đa ${formatFileSize(FILE_SIZE_LIMITS.image)}`
+  }
+  return ''
 }

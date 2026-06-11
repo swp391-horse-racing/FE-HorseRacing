@@ -46,4 +46,24 @@ export const roleApplicationService = {
       .post(ENDPOINTS.roleApplications.referee, formData, { headers: multipartHeaders })
       .then(unwrapResponse)
   },
+
+  verifyCccd: (requestedRole, cccdFront, cccdBack) => {
+    const formData = new FormData()
+    formData.append('requestedRole', requestedRole)
+    formData.append('cccdFront', cccdFront)
+    formData.append('cccdBack', cccdBack)
+    return axiosClient
+      .post(ENDPOINTS.roleApplications.kycOcr, formData, { headers: multipartHeaders })
+      .then(unwrapResponse)
+  },
+
+  verifyFace: (verificationId, selfie) => {
+    const formData = new FormData()
+    formData.append('selfie', selfie)
+    return axiosClient
+      .post(ENDPOINTS.roleApplications.kycFaceMatch(verificationId), formData, {
+        headers: multipartHeaders,
+      })
+      .then(unwrapResponse)
+  },
 }

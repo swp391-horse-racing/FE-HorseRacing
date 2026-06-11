@@ -30,12 +30,6 @@ import { formatDisplayDate } from '@/utils/dateFormat'
 
 function formatJoinDate(createdAt) {
   return formatDisplayDate(createdAt, formatDisplayDate(new Date()))
-  if (!createdAt) return new Date().toLocaleDateString('vi-VN')
-  try {
-    return new Date(createdAt).toLocaleDateString('vi-VN')
-  } catch {
-    return new Date().toLocaleDateString('vi-VN')
-  }
 }
 
 export default function ProfilePage() {
@@ -73,7 +67,7 @@ export default function ProfilePage() {
           navigate(getRoleHomePath(role), { replace: true })
         }
       } catch {
-       
+        return
       }
     }
 
@@ -100,17 +94,28 @@ export default function ProfilePage() {
   const handleRoleSubmit = async (role, payload) => {
     try {
       await submitRoleApplication(role, payload)
-      const fresh = await fetchProfile()
-      if (role === 'SPECTATOR' || hasApprovedRole(fresh)) {
+      if (role === 'SPECTATOR') {
+        const fresh = await fetchProfile()
         const approved = normalizeRole(fresh?.role)
         toast.success(`${displayName}, vai trò ${ROLE_LABELS[approved] || approved} đã được kích hoạt`)
         navigate(getRoleHomePath(approved), { replace: true })
         return
       }
-      toast.success(`Đã gửi hồ sơ xin cấp quyền ${ROLE_LABELS[role]} cho ${displayName}`)
+      toast.success('Đã lưu hồ sơ nháp. Vui lòng hoàn tất xác minh KYC.')
     } catch (err) {
       toast.error(getApiErrorMessage(err))
       throw err
+    }
+  }
+
+  const handleKycComplete = async (role) => {
+    try {
+      await fetchProfile()
+      toast.success(`KYC thành công. Hồ sơ ${ROLE_LABELS[role]} đang chờ quản trị viên duyệt.`)
+    } catch {
+      toast.success('KYC thành công. Hồ sơ đang chờ quản trị viên duyệt.')
+    } finally {
+      setOpenRole(null)
     }
   }
 
@@ -363,6 +368,7 @@ export default function ProfilePage() {
           fullName={displayName}
           onClose={() => setOpenRole(null)}
           onSubmit={(payload) => handleRoleSubmit(openRole, payload)}
+          onKycComplete={() => handleKycComplete(openRole)}
         />
       )}
     </div>

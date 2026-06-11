@@ -80,6 +80,9 @@ export const ENDPOINTS = {
     jockey: '/role-applications/jockey',
     spectator: '/role-applications/spectator',
     referee: '/role-applications/referee',
+    kycOcr: '/role-applications/kyc/ocr',
+    kycFaceMatch: (verificationId) =>
+      `/role-applications/kyc/${verificationId}/face-match`,
     adminList: '/admin/role-applications',
     adminApprove: (profileId) => `/admin/role-applications/${profileId}/approve`,
     adminReject: (profileId) => `/admin/role-applications/${profileId}/reject`,

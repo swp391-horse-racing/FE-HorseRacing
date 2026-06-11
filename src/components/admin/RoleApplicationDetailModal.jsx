@@ -32,9 +32,11 @@ export default function RoleApplicationDetailModal({ request, onClose, onResolve
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [processing, setProcessing] = useState(false)
 
-  const raw = request?.raw ?? {}
+  const raw = useMemo(() => request?.raw ?? {}, [request])
   const detailRows = useMemo(() => buildRoleApplicationDetailRows(raw), [raw])
   const isPending = request?.statusCode === 'PENDING'
+  const requiresKyc = ['OWNER', 'JOCKEY', 'REFEREE'].includes(request?.roleCode)
+  const canApprove = !requiresKyc || raw.kycStatus === 'PASSED'
 
   if (!request) return null
 
@@ -121,6 +123,11 @@ export default function RoleApplicationDetailModal({ request, onClose, onResolve
             {request.reviewReason && (
               <p className="mt-2 text-sm text-rose-300/90">Lý do: {request.reviewReason}</p>
             )}
+            {requiresKyc && !canApprove && (
+              <p className="mt-2 text-sm text-rose-300/90">
+                Hồ sơ chưa KYC thành công nên không thể duyệt.
+              </p>
+            )}
           </div>
 
           <div>
@@ -167,7 +174,7 @@ export default function RoleApplicationDetailModal({ request, onClose, onResolve
                 <XCircle className="h-4 w-4" />
                 Từ chối
               </button>
-              <PrimaryButton icon={Check} disabled={processing} onClick={handleApprove}>
+              <PrimaryButton icon={Check} disabled={processing || !canApprove} onClick={handleApprove}>
                 Xác nhận
               </PrimaryButton>
             </>

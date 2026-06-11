@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FileText, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
+import KycVerificationSteps from '@/components/profile/KycVerificationSteps'
 import { ROLE_LABELS } from '@/constants/roleApplication'
 import {
   getFileHint,
@@ -68,17 +69,16 @@ function buildInitialValues(role, fullName) {
 }
 
 function FilePreview({ file }) {
-  const [previewUrl, setPreviewUrl] = useState(null)
+  const previewUrl = useMemo(
+    () => (file && file.type !== 'application/pdf' ? URL.createObjectURL(file) : null),
+    [file],
+  )
 
   useEffect(() => {
-    if (!file || file.type === 'application/pdf') {
-      setPreviewUrl(null)
-      return undefined
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
-    const url = URL.createObjectURL(file)
-    setPreviewUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+  }, [previewUrl])
 
   if (!file) return null
   if (file.type === 'application/pdf') {
@@ -99,13 +99,15 @@ function FieldError({ message }) {
   return <p className="mt-1.5 text-xs font-medium text-red-600">{message}</p>
 }
 
-export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) {
-  const fields = ROLE_FIELDS[role] || []
+export default function RoleRequestModal({ role, fullName, onClose, onSubmit, onKycComplete }) {
+  const fields = useMemo(() => ROLE_FIELDS[role] || [], [role])
   const [values, setValues] = useState(() => buildInitialValues(role, fullName))
   const [files, setFiles] = useState({})
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [workflowStep, setWorkflowStep] = useState('profile')
+  const [draftSaved, setDraftSaved] = useState(false)
 
   const fileFieldNames = useMemo(
     () => new Set(fields.filter((f) => f.type === 'file').map((f) => f.name)),
@@ -167,11 +169,28 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
     setUploading(true)
     try {
       await onSubmit({ values, files, fileFieldNames })
-      onClose()
+      if (role === 'SPECTATOR') {
+        onClose()
+      } else {
+        setDraftSaved(true)
+        setWorkflowStep('kyc')
+      }
     } finally {
       setUploading(false)
       setSubmitting(false)
     }
+  }
+
+  const handleClose = () => {
+    if (
+      draftSaved &&
+      !window.confirm(
+        'Hồ sơ đã được lưu ở trạng thái nháp. Nếu đóng lúc này, bạn sẽ cần gửi lại hồ sơ để bắt đầu KYC mới. Bạn vẫn muốn đóng?',
+      )
+    ) {
+      return
+    }
+    onClose()
   }
 
   const inputClass = (name) =>
@@ -203,11 +222,12 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+          <button type="button" onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <X className="w-6 h-6 text-[#1E3A5F]" />
           </button>
         </div>
 
+        {workflowStep === 'profile' ? (
         <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-5" noValidate>
           {fields.map((f) => (
             <div key={f.name}>
@@ -292,7 +312,7 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 py-3 bg-[#FAFAFA] text-[#1E3A5F] border border-gray-200 rounded-xl hover:border-gray-400 font-semibold"
             >
               Hủy
@@ -306,6 +326,14 @@ export default function RoleRequestModal({ role, fullName, onClose, onSubmit }) 
             </button>
           </div>
         </form>
+        ) : (
+          <div className="overflow-y-auto p-6">
+            <KycVerificationSteps
+              role={role}
+              onComplete={onKycComplete}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
