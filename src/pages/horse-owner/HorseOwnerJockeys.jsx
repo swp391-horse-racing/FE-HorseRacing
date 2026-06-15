@@ -88,26 +88,9 @@ function comboKey(horseId, raceId) {
 
 async function loadInvitableTournaments() {
   const listResponse = await tournamentService.getPublicTournaments();
-  const list = listResponse.data ?? [];
-  const publicTournaments = list.filter((tournament) =>
+  return (listResponse.data ?? []).filter((tournament) =>
     ["PUBLISHED", "OPEN_REGISTRATION"].includes(tournament.statusCode),
   );
-
-  const detailed = await Promise.all(
-    publicTournaments.map(async (tournament) => {
-      if ((tournament.races ?? []).length > 0) return tournament;
-
-      try {
-        const detail = await tournamentService.getPublicTournament(tournament.id);
-        return detail.data ?? tournament;
-      } catch (error) {
-        console.warn("Không thể tải chi tiết giải đấu", tournament.id, error?.response?.data || error);
-        return tournament;
-      }
-    }),
-  );
-
-  return detailed;
 }
 
 export function HorseOwnerJockeys() {

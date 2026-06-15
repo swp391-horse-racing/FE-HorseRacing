@@ -145,7 +145,7 @@ export const useAuthStore = create((set, get) => ({
 
     set({
       token: stored,
-      role: normalizeRole(getRoleFromToken(stored)),
+      isAuthenticated: true,
       isLoading: true,
     })
 

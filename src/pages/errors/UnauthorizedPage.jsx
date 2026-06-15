@@ -1,7 +1,28 @@
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { ShieldAlert } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+import { getRoleHomePath, normalizeRole } from '@/utils/roleRedirect'
 
 export default function UnauthorizedPage() {
+  const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
+  const isLoading = useAuthStore((s) => s.isLoading)
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#D4A017] border-t-transparent" />
+      </div>
+    )
+  }
+
+  const currentRole = normalizeRole(role || user?.role)
+  const roleHome = getRoleHomePath(currentRole)
+
+  if (currentRole && roleHome !== '/') {
+    return <Navigate to={roleHome} replace />
+  }
+
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 text-center">
       <ShieldAlert className="w-16 h-16 text-[#D4A017] mb-4" />

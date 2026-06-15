@@ -1,6 +1,7 @@
 import axiosClient from '@/api/axiosClient'
 import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
+import { cachedRequest, invalidateCachedRequest } from '@/utils/requestCache'
 
 export const FALLBACK_TOURNAMENT_BANNER =
   'https://images.unsplash.com/photo-1507514604110-ba3347c457f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
@@ -70,12 +71,6 @@ function sumRaceCapacity(races = []) {
 
 function firstPositiveEntryFee(races = []) {
   return Number(races.find((race) => Number(race?.entryFee ?? 0) > 0)?.entryFee ?? 0)
-}
-
-function countActiveRegistrations(registrations = []) {
-  return registrations.filter((registration) =>
-    ['PENDING', 'APPROVED'].includes(registration?.status),
-  ).length
 }
 
 function mapRacePrizes(prizes = []) {
@@ -229,6 +224,11 @@ export function mapTournament(tournament) {
   }
 }
 
+export function invalidateTournamentListCache() {
+  invalidateCachedRequest('admin:tournaments')
+  invalidateCachedRequest('public:tournaments')
+}
+
 export const tournamentService = {
   async uploadTournamentBanner(file) {
     const formData = new FormData()
@@ -258,9 +258,11 @@ export const tournamentService = {
   },
 
   async deleteTournament(id) {
-    return axiosClient
+    const result = await axiosClient
       .delete(ENDPOINTS.tournaments.adminById(id))
       .then(unwrapResponse)
+    invalidateTournamentListCache()
+    return result
   },
 
   async updateTournamentStatus(id, status) {
@@ -304,45 +306,14 @@ export const tournamentService = {
   },
 
   async getAdminTournaments(params = {}) {
-    const list = await axiosClient
-      .get(ENDPOINTS.tournaments.adminList, { params })
-      .then(unwrapResponse)
-
-    const tournaments = await Promise.all(
-      (Array.isArray(list) ? list : []).map(async (summary) => {
-        const fallback = mapTournament(summary)
-
-        const [detailResult, registrationsResult] = await Promise.allSettled([
-          axiosClient
-            .get(ENDPOINTS.tournaments.adminById(summary.id))
-            .then(unwrapResponse),
-          axiosClient
-            .get(ENDPOINTS.tournaments.adminRaceRegistrations(summary.id))
-            .then(unwrapResponse),
-        ])
-
-        const tournament =
-          detailResult.status === 'fulfilled'
-            ? mapTournament(detailResult.value)
-            : fallback
-        if (!tournament) return null
-
-        const registrations =
-          registrationsResult.status === 'fulfilled' &&
-          Array.isArray(registrationsResult.value)
-            ? countActiveRegistrations(registrationsResult.value)
-            : tournament.registrations
-
-        return {
-          ...tournament,
-          registrations,
-          registeredHorses: registrations,
-        }
-      }),
+    const list = await cachedRequest('admin:tournaments', () =>
+      axiosClient.get(ENDPOINTS.tournaments.adminList, { params }).then(unwrapResponse),
     )
 
     return {
-      data: tournaments.filter(Boolean),
+      data: (Array.isArray(list) ? list : [])
+        .map((summary) => mapTournament({ ...summary, races: [] }))
+        .filter(Boolean),
     }
   },
 
@@ -357,9 +328,9 @@ export const tournamentService = {
   },
 
   async getPublicTournaments(params = {}) {
-    const list = await axiosClient
-      .get(ENDPOINTS.tournaments.publicList, { params })
-      .then(unwrapResponse)
+    const list = await cachedRequest('public:tournaments', () =>
+      axiosClient.get(ENDPOINTS.tournaments.publicList, { params }).then(unwrapResponse),
+    )
 
     return {
       data: (Array.isArray(list) ? list : []).map(mapTournament).filter(Boolean),

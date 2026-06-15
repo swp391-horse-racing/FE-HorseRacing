@@ -19,6 +19,12 @@ export const useApiCacheStore = create((set, get) => ({
 
   getCache: (key) => get().cache[key],
 
+  isFresh: (key, staleTimeMs = 120_000) => {
+    const entry = get().cache[key]
+    if (!entry?.data) return false
+    return Date.now() - entry.updatedAt < staleTimeMs
+  },
+
   setCache: (key, data) => {
     const current = get().cache[key]
     if (current && isSameData(current.data, data)) return false

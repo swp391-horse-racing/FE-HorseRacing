@@ -1,6 +1,7 @@
 import axiosClient from '@/api/axiosClient'
 import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
+import { cachedRequest, invalidateCachedRequest } from '@/utils/requestCache'
 
 const STATUS_LABELS = {
   PENDING: 'Chờ duyệt',
@@ -109,14 +110,17 @@ export const horseService = {
   },
 
   async getAllAdminHorses() {
-    const results = await Promise.all(
-      HORSE_STATUS_VALUES.map((status) => this.getAdminHorses(status.value)),
-    )
-    return results.flat()
+    return cachedRequest('admin:horses', async () => {
+      const results = await Promise.all(
+        HORSE_STATUS_VALUES.map((status) => this.getAdminHorses(status.value)),
+      )
+      return results.flat()
+    })
   },
 
   async approveHorse(id) {
     const data = await axiosClient.put(ENDPOINTS.horses.adminApprove(id)).then(unwrapResponse)
+    invalidateCachedRequest('admin:horses')
     return mapHorse(data)
   },
 
@@ -124,6 +128,7 @@ export const horseService = {
     const data = await axiosClient
       .put(ENDPOINTS.horses.adminReject(id), { reason })
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:horses')
     return mapHorse(data)
   },
 
@@ -131,6 +136,7 @@ export const horseService = {
     const data = await axiosClient
       .put(ENDPOINTS.horses.adminSuspend(id), { reason })
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:horses')
     return mapHorse(data)
   },
 }

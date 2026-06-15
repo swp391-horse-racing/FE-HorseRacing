@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Trophy,
   MapPin,
@@ -22,6 +22,7 @@ import {
 } from "../admin/AdminLayout";
 import { HorseOwnerInfoRow } from "./components/HorseOwnerInfoRow";
 import { formatDisplayDate } from "@/utils/dateFormat";
+import { useFetch } from "@/hooks/useFetch";
 
 function formatRegistrationRange(tournament) {
   return `${formatDisplayDate(tournament.registrationOpenDate)} → ${formatDisplayDate(
@@ -61,38 +62,18 @@ function isOpenRegistration(tournament) {
 
 export function HorseOwnerTournaments() {
   const [search, setSearch] = useState("");
-  const [tournaments, setTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadTournaments() {
-      try {
-        setLoading(true);
-        setError("");
-        const response = await tournamentService.getPublicTournaments();
-        if (!cancelled) setTournaments(response.data);
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(
-            requestError?.response?.data?.message ||
-              requestError?.message ||
-              "Không thể tải danh sách giải đấu.",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadTournaments();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data, loading, error: fetchError } = useFetch(
+    async () => {
+      const response = await tournamentService.getPublicTournaments();
+      return response.data;
+    },
+    { cacheKey: "public:tournaments" },
+  );
+  const tournaments = data ?? [];
+  const error =
+    fetchError?.response?.data?.message ||
+    fetchError?.message ||
+    (fetchError ? "Không thể tải danh sách giải đấu." : "");
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase("vi");

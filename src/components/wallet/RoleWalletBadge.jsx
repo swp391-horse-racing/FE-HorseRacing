@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Wallet } from 'lucide-react'
 import { fmtVND } from '@/utils/formatCurrency'
-import { walletService } from '@/services/walletService'
+import { walletService, peekWalletBalance } from '@/services/walletService'
 
 /**
  * Badge ví trên header layout (dark theme) — khớp Figma: "ví 250.000.000đ"
  * @param {'admin' | 'user'} walletMode
  */
 export default function RoleWalletBadge({ to, walletMode = 'user', theme = 'dark' }) {
-  const [balance, setBalance] = useState(null)
+  const [balance, setBalance] = useState(() => peekWalletBalance(walletMode))
 
   useEffect(() => {
     const load = walletMode === 'admin' ? walletService.getAdminWallet : walletService.getMyWallet

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApiCacheStore } from '@/store/apiCacheStore'
 
 export function useFetch(fetchFn, options = {}) {
-  const { enabled = true, deps = [], cacheKey } = options
+  const { enabled = true, deps = [], cacheKey, staleTime = 120_000 } = options
   const depsKey = JSON.stringify(deps)
   const cached = cacheKey ? useApiCacheStore.getState().getCache(cacheKey) : null
 
-  const [data, setData] = useState(cached?.data ?? null)
+  const [data, setData] = useState(cached?.data)
   const [loading, setLoading] = useState(Boolean(enabled && !cached))
   const [error, setError] = useState(null)
 
@@ -16,39 +16,56 @@ export function useFetch(fetchFn, options = {}) {
     fetchFnRef.current = fetchFn
   }, [fetchFn])
 
-  const refetch = useCallback(async () => {
-    if (!enabled) {
-      setLoading(false)
-      return null
-    }
-
-    const cachedData = cacheKey ? useApiCacheStore.getState().getCache(cacheKey)?.data : null
-    const hasCachedData = cachedData !== null && cachedData !== undefined
-
-    if (hasCachedData) {
-      setData(cachedData)
-    } else {
-      setLoading(true)
-    }
-
-    setError(null)
-
-    try {
-      const result = await fetchFnRef.current()
-      if (cacheKey) {
-        const changed = useApiCacheStore.getState().setCache(cacheKey, result)
-        if (changed || !hasCachedData) setData(result)
-      } else {
-        setData(result)
+  const refetch = useCallback(
+    async ({ force = false } = {}) => {
+      if (!enabled) {
+        setLoading(false)
+        return null
       }
-      return result
-    } catch (err) {
-      setError(err)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [enabled, cacheKey])
+
+      const cachedEntry = cacheKey ? useApiCacheStore.getState().getCache(cacheKey) : null
+      const cachedData = cachedEntry?.data
+      const hasCachedData = cachedData !== null && cachedData !== undefined
+      const isFresh =
+        !force &&
+        cacheKey &&
+        staleTime > 0 &&
+        useApiCacheStore.getState().isFresh(cacheKey, staleTime)
+
+      if (hasCachedData) {
+        setData(cachedData)
+      }
+
+      if (isFresh) {
+        setLoading(false)
+        setError(null)
+        return cachedData
+      }
+
+      if (!hasCachedData) {
+        setLoading(true)
+      }
+
+      setError(null)
+
+      try {
+        const result = await fetchFnRef.current()
+        if (cacheKey) {
+          const changed = useApiCacheStore.getState().setCache(cacheKey, result)
+          if (changed || !hasCachedData) setData(result)
+        } else {
+          setData(result)
+        }
+        return result
+      } catch (err) {
+        setError(err)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    },
+    [enabled, cacheKey, staleTime],
+  )
 
   useEffect(() => {
     if (enabled) {

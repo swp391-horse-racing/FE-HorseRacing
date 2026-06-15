@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { tournamentService } from '@/services/tournamentService'
+import { horseService } from '@/services/horseService'
 import AdminSidebar from '@/components/admin/layout/AdminSidebar'
 import AdminTopbar from '@/components/admin/layout/AdminTopbar'
 import AdminPageHeader from '@/components/admin/layout/AdminPageHeader'
@@ -20,6 +22,11 @@ export default function AdminLayout({
   const displayName = user?.fullName || user?.username || 'Admin'
   const avatarLetter = displayName.charAt(0).toUpperCase()
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    tournamentService.getAdminTournaments().catch(() => {})
+    horseService.getAllAdminHorses().catch(() => {})
+  }, [])
 
   const handleLogout = async () => {
     await logout()

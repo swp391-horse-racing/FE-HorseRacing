@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, Edit, Newspaper, Plus, Search, Sparkles, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,6 +9,8 @@ import { newsService } from '@/services/newsService'
 import NewsImage from '@/components/news/NewsImage'
 import { NEWS_IMAGE_PRESETS } from '@/utils/cloudinary'
 import { formatDisplayDate } from '@/utils/dateFormat'
+import { useFetch } from '@/hooks/useFetch'
+import { useApiCacheStore } from '@/store/apiCacheStore'
 
 function formatDate(dateString) {
   return formatDisplayDate(dateString)
@@ -20,33 +22,28 @@ function formatDate(dateString) {
 }
 
 export default function AdminNewsPage() {
-  const [news, setNews] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { data, loading, refetch: loadNews } = useFetch(
+    async () => {
+      const response = await newsService.getAllNews({ admin: true })
+      return response.data
+    },
+    { cacheKey: 'admin:news' },
+  )
+  const news = data ?? []
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
 
-  const loadNews = useCallback(async () => {
-    try {
-      setLoading(true)
-      const response = await newsService.getAllNews({ search, admin: true })
-      setNews(response.data)
-    } catch (error) {
-      console.error('Error loading admin news:', error)
-      toast.error('Không thể tải tin tức. Hãy đăng nhập admin và kiểm tra backend.')
-      setNews([])
-    } finally {
-      setLoading(false)
-    }
-  }, [search])
-
-  useEffect(() => {
-    loadNews()
-  }, [loadNews])
-
   const filteredNews = useMemo(() => {
-    if (filter === 'featured') return news.filter((item) => item.featured)
-    return news
-  }, [news, filter])
+    const normalized = search.trim().toLocaleLowerCase('vi')
+    let items = news
+    if (filter === 'featured') items = items.filter((item) => item.featured)
+    if (!normalized) return items
+    return items.filter((item) =>
+      `${item.title} ${item.shortDescription} ${item.category} ${item.author}`
+        .toLocaleLowerCase('vi')
+        .includes(normalized),
+    )
+  }, [news, filter, search])
 
   const handleDelete = async (id, title) => {
     if (!window.confirm(`Xóa bài viết "${title}"? Hành động này không thể hoàn tác.`)) return
@@ -54,7 +51,8 @@ export default function AdminNewsPage() {
     try {
       await newsService.deleteNews(id)
       toast.success('Xóa bài viết thành công')
-      loadNews()
+      useApiCacheStore.getState().removeCache('admin:news')
+      await loadNews({ force: true })
     } catch (error) {
       console.error(error)
       toast.error('Không thể xóa bài viết')

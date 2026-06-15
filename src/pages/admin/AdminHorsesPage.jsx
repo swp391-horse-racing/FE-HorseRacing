@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Ban,
   CheckCircle2,
@@ -14,6 +14,8 @@ import { toast } from 'sonner'
 import AdminLayout from '@/components/AdminLayout'
 import { horseService, HORSE_STATUS_VALUES } from '@/services/horseService'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { useFetch } from '@/hooks/useFetch'
+import { useApiCacheStore } from '@/store/apiCacheStore'
 
 function pillTone(value) {
   const tones = {
@@ -38,8 +40,11 @@ function actionButtonClass(tone) {
 }
 
 export default function AdminHorsesPage() {
-  const [horses, setHorses] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { data, loading, refetch: loadHorses, setData: setHorses } = useFetch(
+    () => horseService.getAllAdminHorses(),
+    { cacheKey: 'admin:horses' },
+  )
+  const horses = data ?? []
   const [busyId, setBusyId] = useState(null)
   const [section, setSection] = useState('all')
   const [query, setQuery] = useState('')
@@ -47,22 +52,10 @@ export default function AdminHorsesPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [openReasonId, setOpenReasonId] = useState(null)
 
-  const loadHorses = async () => {
-    try {
-      setLoading(true)
-      const data = await horseService.getAllAdminHorses()
-      setHorses(data)
-    } catch (error) {
-      console.error('Không thể tải danh sách ngựa', error?.response?.data || error)
-      toast.error(getApiErrorMessage(error) || 'Không thể tải danh sách ngựa')
-    } finally {
-      setLoading(false)
-    }
+  const refreshHorses = async () => {
+    useApiCacheStore.getState().removeCache('admin:horses')
+    await loadHorses({ force: true })
   }
-
-  useEffect(() => {
-    loadHorses()
-  }, [])
 
   const owners = useMemo(() => {
     const seen = new Map()
@@ -118,7 +111,7 @@ export default function AdminHorsesPage() {
   )
 
   const replaceHorse = (nextHorse) => {
-    setHorses((prev) => prev.map((horse) => (horse.id === nextHorse.id ? nextHorse : horse)))
+    setHorses((prev) => (prev ?? []).map((horse) => (horse.id === nextHorse.id ? nextHorse : horse)))
   }
 
   const approveHorse = async (horse) => {
@@ -191,7 +184,7 @@ export default function AdminHorsesPage() {
       action={
         <button
           type="button"
-          onClick={loadHorses}
+          onClick={refreshHorses}
           className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08] hover:text-white"
         >
           <RefreshCw className="h-4 w-4" />

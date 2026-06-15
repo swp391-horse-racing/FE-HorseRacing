@@ -6,7 +6,7 @@ import Card from '@/components/ui/Card'
 import Field from '@/components/ui/Field'
 import { Input, Select, TextArea } from '@/components/ui/Input'
 import { PanelActions, PanelHeader } from '@/components/ui/Panel'
-import { tournamentService } from '@/services/tournamentService'
+import { tournamentService, invalidateTournamentListCache } from '@/services/tournamentService'
 import { locationSettingsService } from '@/services/locationSettingsService'
 import { useApiCacheStore } from '@/store/apiCacheStore'
 import { getApiErrorMessage } from '@/utils/apiError'
@@ -267,6 +267,7 @@ export default function SettingsTab({ tournament, setTournament }) {
     try {
       setDeleting(true)
       await tournamentService.deleteTournament(tournament.id)
+      invalidateTournamentListCache()
       useApiCacheStore.getState().removeCache(`admin:tournament:${tournament.id}`)
       useApiCacheStore.getState().removeCache('admin:tournaments')
       toast.success('Đã xóa giải đấu')

@@ -2,6 +2,7 @@ import axiosClient from '@/api/axiosClient'
 import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
 import { formatDisplayDateTime } from '@/utils/dateFormat'
+import { cachedRequest, invalidateCachedRequest } from '@/utils/requestCache'
 
 export const ROLE_LABELS = {
   USER: 'Người dùng',
@@ -113,21 +114,32 @@ export function mapRoleApplication(application, emailFromUser = '') {
 
 export const adminUserService = {
   async getUsers() {
-    const data = await axiosClient.get(ENDPOINTS.admin.users).then(unwrapResponse)
+    const data = await cachedRequest('admin:users', () =>
+      axiosClient.get(ENDPOINTS.admin.users).then(unwrapResponse),
+    )
     return Array.isArray(data) ? data.map(mapUser) : []
   },
 
-  async getRoleApplications(params = {}) {
-    const [applications, users] = await Promise.all([
-      axiosClient.get(ENDPOINTS.admin.roleApplications, { params }).then(unwrapResponse),
-      axiosClient.get(ENDPOINTS.admin.users).then(unwrapResponse),
-    ])
+  async getRoleApplications(params = {}, users = null) {
+    const applications = await axiosClient
+      .get(ENDPOINTS.admin.roleApplications, { params })
+      .then(unwrapResponse)
 
+    const list = Array.isArray(applications) ? applications : []
+
+    if (Array.isArray(users)) {
+      const emailByUserId = new Map(users.map((user) => [user.rawId ?? user.id, user.email ?? '']))
+      return list.map((application) =>
+        mapRoleApplication(application, emailByUserId.get(application?.userId) ?? ''),
+      )
+    }
+
+    const allUsers = await axiosClient.get(ENDPOINTS.admin.users).then(unwrapResponse)
     const emailByUserId = new Map(
-      (Array.isArray(users) ? users : []).map((user) => [user.id, user.email ?? '']),
+      (Array.isArray(allUsers) ? allUsers : []).map((user) => [user.id, user.email ?? '']),
     )
 
-    return (Array.isArray(applications) ? applications : []).map((application) =>
+    return list.map((application) =>
       mapRoleApplication(application, emailByUserId.get(application?.userId) ?? ''),
     )
   },
@@ -141,6 +153,7 @@ export const adminUserService = {
     await axiosClient
       .put(ENDPOINTS.admin.activateUser(id), {}, { headers: { 'Content-Type': 'application/json' } })
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:users')
     return this.getUserById(id)
   },
 
@@ -148,6 +161,7 @@ export const adminUserService = {
     await axiosClient
       .put(ENDPOINTS.admin.deactivateUser(id), {}, { headers: { 'Content-Type': 'application/json' } })
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:users')
     return this.getUserById(id)
   },
 
@@ -155,6 +169,7 @@ export const adminUserService = {
     const data = await axiosClient
       .put(ENDPOINTS.admin.userRole(id), { role })
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:users')
     return mapUser(data)
   },
 
@@ -164,6 +179,7 @@ export const adminUserService = {
         params: role ? { role } : undefined,
       })
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:users')
     return mapRoleApplication(data)
   },
 
@@ -175,6 +191,7 @@ export const adminUserService = {
         { params: role ? { role } : undefined },
       )
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:users')
     return mapRoleApplication(data)
   },
 }

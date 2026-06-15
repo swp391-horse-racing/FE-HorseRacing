@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BadgeCheck,
   Eye,
@@ -18,6 +18,8 @@ import InviteUserModal from '@/components/InviteUserModal'
 import { PrimaryButton } from '@/components/ui/AdminButton'
 import { adminUserService, ROLE_VALUES } from '@/services/adminUserService'
 import { getApiErrorMessage } from '@/utils/apiError'
+import { useFetch } from '@/hooks/useFetch'
+import { useApiCacheStore } from '@/store/apiCacheStore'
 
 function pillTone(value) {
   const tones = {
@@ -42,43 +44,29 @@ export default function AdminUsersPage() {
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('ALL')
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [users, setUsers] = useState([])
-  const [requests, setRequests] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [requestsLoading, setRequestsLoading] = useState(true)
   const [detailRequest, setDetailRequest] = useState(null)
   const [togglingUserId, setTogglingUserId] = useState(null)
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true)
-      const data = await adminUserService.getUsers()
-      setUsers(data)
-    } catch (error) {
-      console.error('Không thể tải danh sách người dùng', error?.response?.data || error)
-      toast.error(getApiErrorMessage(error) || 'Không thể tải danh sách người dùng')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, loading, refetch, setData } = useFetch(
+    async () => {
+      const usersData = await adminUserService.getUsers()
+      const requestsData = await adminUserService.getRoleApplications(
+        { status: 'PENDING' },
+        usersData,
+      )
+      return { users: usersData, requests: requestsData }
+    },
+    { cacheKey: 'admin:users-page' },
+  )
 
-  const loadRequests = async () => {
-    try {
-      setRequestsLoading(true)
-      const data = await adminUserService.getRoleApplications({ status: 'PENDING' })
-      setRequests(data)
-    } catch (error) {
-      console.error('Không thể tải yêu cầu cấp quyền', error?.response?.data || error)
-      toast.error(getApiErrorMessage(error) || 'Không thể tải yêu cầu cấp quyền')
-    } finally {
-      setRequestsLoading(false)
-    }
-  }
+  const users = data?.users ?? []
+  const requests = data?.requests ?? []
+  const requestsLoading = loading
 
-  useEffect(() => {
-    loadUsers()
-    loadRequests()
-  }, [])
+  const reloadAll = async () => {
+    useApiCacheStore.getState().removeCache('admin:users-page')
+    await refetch({ force: true })
+  }
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('vi')
@@ -113,14 +101,14 @@ export default function AdminUsersPage() {
         const updated = await adminUserService.activateUser(userId)
         if (!updated?.active) {
           toast.error('Mở khóa thất bại trên server. Thử lại.')
-          await loadUsers()
+          await reloadAll()
           return
         }
         toast.success(`Đã mở khóa ${item.name}. User có thể đăng nhập ngay.`)
       }
 
-      setUsers((prev) =>
-        prev.map((u) =>
+      setData((prev) => ({
+        users: (prev?.users ?? []).map((u) =>
           u.rawId === item.rawId
             ? {
                 ...u,
@@ -129,12 +117,13 @@ export default function AdminUsersPage() {
               }
             : u,
         ),
-      )
+        requests: prev?.requests ?? [],
+      }))
 
-      await loadUsers()
+      await reloadAll()
     } catch (error) {
       toast.error(getApiErrorMessage(error) || 'Không thể cập nhật trạng thái tài khoản')
-      await loadUsers()
+      await reloadAll()
     } finally {
       setTogglingUserId(null)
     }
@@ -180,10 +169,7 @@ export default function AdminUsersPage() {
       <RoleApplicationDetailModal
         request={detailRequest}
         onClose={() => setDetailRequest(null)}
-        onResolved={() => {
-          loadUsers()
-          loadRequests()
-        }}
+        onResolved={reloadAll}
       />
 
       <section className="mb-8 grid gap-5 md:grid-cols-4">
@@ -234,10 +220,7 @@ export default function AdminUsersPage() {
 
         <button
           type="button"
-          onClick={() => {
-            loadUsers()
-            loadRequests()
-          }}
+          onClick={reloadAll}
           className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white/65 transition hover:text-white"
         >
           <RefreshCw className="h-4 w-4" />

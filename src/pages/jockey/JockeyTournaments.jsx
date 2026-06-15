@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Calendar,
   Clock,
@@ -20,6 +20,7 @@ import { JockeyLayout } from "./JockeyLayout";
 import { invitations, schedules, fmt } from "./data";
 import { JockeyInfoRow } from "./components/JockeyInfoRow";
 import { formatDisplayDate } from "@/utils/dateFormat";
+import { useFetch } from "@/hooks/useFetch";
 
 const DEFAULT_STATUS_FILTERS = [
   "Tất cả",
@@ -72,38 +73,18 @@ function getJockeyRelation(tournament) {
 export function JockeyTournaments() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Tất cả");
-  const [tournaments, setTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadTournaments() {
-      try {
-        setLoading(true);
-        setError("");
-        const response = await tournamentService.getPublicTournaments();
-        if (!cancelled) setTournaments(response.data);
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(
-            requestError?.response?.data?.message ||
-              requestError?.message ||
-              "Không thể tải danh sách giải đấu.",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadTournaments();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data, loading, error: fetchError, refetch } = useFetch(
+    async () => {
+      const response = await tournamentService.getPublicTournaments();
+      return response.data;
+    },
+    { cacheKey: "public:tournaments" },
+  );
+  const tournaments = data ?? [];
+  const error =
+    fetchError?.response?.data?.message ||
+    fetchError?.message ||
+    (fetchError ? "Không thể tải danh sách giải đấu." : "");
 
   const statusFilters = useMemo(() => {
     const usedStatuses = new Set(tournaments.map((tournament) => tournament.status));

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -20,7 +20,7 @@ import {
   setTournamentBannerFallback,
   tournamentService,
 } from "@/services/tournamentService";
-import { useApiCacheStore } from "@/store/apiCacheStore";
+import { useFetch } from "@/hooks/useFetch";
 import { formatDisplayDate } from "@/utils/dateFormat";
 
 const STATUS_TABS = [
@@ -38,47 +38,22 @@ const STATUS_TABS = [
 const ADMIN_TOURNAMENTS_CACHE_KEY = "admin:tournaments";
 
 export default function AdminTournamentsPage() {
-  const cachedTournaments = useApiCacheStore.getState().getCache(ADMIN_TOURNAMENTS_CACHE_KEY)?.data;
-  const hasInitialCache = useRef(Boolean(cachedTournaments));
-  const [tournaments, setTournaments] = useState(cachedTournaments ?? []);
+  const { data, loading, error: fetchError } = useFetch(
+    async () => {
+      const response = await tournamentService.getAdminTournaments();
+      return response.data;
+    },
+    { cacheKey: ADMIN_TOURNAMENTS_CACHE_KEY },
+  );
+  const tournaments = data ?? [];
   const [status, setStatus] = useState("Tất cả");
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("latest");
   const [view, setView] = useState("grid");
-  const [loading, setLoading] = useState(!cachedTournaments);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadTournaments() {
-      try {
-        if (!hasInitialCache.current) setLoading(true);
-        setError("");
-        const response = await tournamentService.getAdminTournaments();
-        if (!cancelled) {
-          const changed = useApiCacheStore.getState().setCache(ADMIN_TOURNAMENTS_CACHE_KEY, response.data);
-          if (changed || !hasInitialCache.current) setTournaments(response.data);
-        }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(
-            requestError?.response?.data?.message ||
-              requestError?.message ||
-              "Không thể tải danh sách giải đấu.",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadTournaments();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const error =
+    fetchError?.response?.data?.message ||
+    fetchError?.message ||
+    (fetchError ? "Không thể tải danh sách giải đấu." : "");
 
   const statusTabs = useMemo(() => {
     const usedStatuses = new Set(

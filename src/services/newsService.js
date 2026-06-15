@@ -2,6 +2,7 @@ import axiosClient from '@/api/axiosClient'
 import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
 import { FALLBACK_NEWS_IMAGE } from '@/utils/cloudinary'
+import { cachedRequest, invalidateCachedRequest } from '@/utils/requestCache'
 
 const multipartHeaders = {
   'Content-Type': 'multipart/form-data',
@@ -85,7 +86,10 @@ export const newsService = {
       ? ENDPOINTS.news.adminList
       : ENDPOINTS.news.all
 
-    const list = await axiosClient.get(endpoint).then(unwrapResponse)
+    const useAdminCache = params.admin && !params.search
+    const list = useAdminCache
+      ? await cachedRequest('admin:news', () => axiosClient.get(endpoint).then(unwrapResponse))
+      : await axiosClient.get(endpoint).then(unwrapResponse)
 
     return {
       data: filterNews(mapNewsList(list), params),
@@ -168,6 +172,7 @@ export const newsService = {
           .post(ENDPOINTS.news.adminList, body)
           .then(unwrapResponse)
 
+    invalidateCachedRequest('admin:news')
     return {
       data: mapNewsArticle(article),
     }
@@ -194,6 +199,7 @@ export const newsService = {
           .put(ENDPOINTS.news.adminById(id), body)
           .then(unwrapResponse)
 
+    invalidateCachedRequest('admin:news')
     return {
       data: mapNewsArticle(article),
     }
@@ -203,5 +209,6 @@ export const newsService = {
     await axiosClient
       .delete(ENDPOINTS.news.adminById(id))
       .then(unwrapResponse)
+    invalidateCachedRequest('admin:news')
   },
 }
