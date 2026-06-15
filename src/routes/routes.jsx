@@ -36,15 +36,15 @@ export const router = createBrowserRouter([
       { path: '/dashboard/wallet', element: withAuth(<SpectatorWalletPage />) },
       { path: '/profile', element: withAuth(<ProfilePage />) },
       { path: '/unauthorized', element: withAuth(<UnauthorizedPage />) },
-      {
-        path: '/referee/*',
-        element: withAuth(
-          <RoleProtectedRoute allowedRoles={['REFEREE']}>
-            <RefereePage />
-          </RoleProtectedRoute>,
-        ),
-      },
     ],
+  },
+  {
+    path: '/referee/*',
+    element: withAuth(
+      <RoleProtectedRoute allowedRoles={['REFEREE']}>
+        <RefereePage />
+      </RoleProtectedRoute>,
+    ),
   },
   {
     path: '/jockey/*',

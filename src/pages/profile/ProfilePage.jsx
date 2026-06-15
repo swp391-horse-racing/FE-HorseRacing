@@ -95,10 +95,9 @@ export default function ProfilePage() {
     try {
       await submitRoleApplication(role, payload)
       if (role === 'SPECTATOR') {
-        const fresh = await fetchProfile()
-        const approved = normalizeRole(fresh?.role)
-        toast.success(`${displayName}, vai trò ${ROLE_LABELS[approved] || approved} đã được kích hoạt`)
-        navigate(getRoleHomePath(approved), { replace: true })
+        await fetchProfile()
+        toast.success('Đã gửi yêu cầu Khán giả. Hồ sơ đang chờ quản trị viên duyệt.')
+        setOpenRole(null)
         return
       }
       toast.success('Đã lưu hồ sơ nháp. Vui lòng hoàn tất xác minh KYC.')
