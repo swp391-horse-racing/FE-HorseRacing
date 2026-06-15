@@ -102,6 +102,11 @@ function mapRace(race, index) {
     date: toDate(scheduledStartAt),
     time: toTime(scheduledStartAt),
     distance: race?.distance ?? '',
+    venueId: race?.venueId == null ? '' : String(race.venueId),
+    venueName: race?.venueName ?? '',
+    venueAddress: race?.venueAddress ?? '',
+    provinceId: race?.provinceId == null ? '' : String(race.provinceId),
+    provinceName: race?.provinceName ?? '',
     track: race?.track ?? 'Chưa cập nhật',
     surface: race?.surface ?? 'Chưa cập nhật',
     category: race?.category ?? 'Open',
@@ -169,6 +174,7 @@ function raceRequest(race) {
   return {
     name: race.name,
     distance: race.distance || '1000m',
+    venueId: race.venueId ? Number(race.venueId) : null,
     scheduledStartAt: dateTime(date, time),
     scheduledEndAt: addOneHourDateTime(date, time),
     minParticipants,
@@ -195,6 +201,8 @@ export function mapTournament(tournament) {
     statusTone: STATUS_TONES[tournament.status] ?? 'gray',
     statusCode: tournament.status,
     location: tournament.location ?? '',
+    provinceId: tournament.provinceId == null ? '' : String(tournament.provinceId),
+    provinceName: tournament.provinceName ?? '',
     startDate: toDate(tournament.startAt),
     endDate: toDate(tournament.endAt),
     registrationOpenDate: toDate(tournament.registrationOpenAt),
@@ -206,6 +214,8 @@ export function mapTournament(tournament) {
     registeredHorses: registrations,
     minTeams: Number(tournament.minTeams ?? 0),
     maxTeams: Number(tournament.maxTeams ?? 0),
+    minHorsesPerOwner: Number(tournament.minHorsesPerOwner ?? 4),
+    maxHorsesPerOwner: Number(tournament.maxHorsesPerOwner ?? 10),
     maxHorses: Number(tournament.maxTeams ?? 0) || sumRaceCapacity(races),
     entryFee: firstPositiveEntryFee(races),
     prizePool: sumPrizePool(races),
@@ -280,6 +290,14 @@ export const tournamentService = {
   async deleteTournamentRace(id) {
     const tournament = await axiosClient
       .delete(ENDPOINTS.tournaments.adminRaceById(id))
+      .then(unwrapResponse)
+
+    return { data: mapTournament(tournament), raw: tournament }
+  },
+
+  async replaceTournamentRaces(id, races) {
+    const tournament = await axiosClient
+      .put(ENDPOINTS.tournaments.adminRaces(id), races.map(raceRequest))
       .then(unwrapResponse)
 
     return { data: mapTournament(tournament), raw: tournament }

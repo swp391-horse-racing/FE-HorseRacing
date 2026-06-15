@@ -2,17 +2,24 @@ import { useState } from "react";
 import { Info } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Field from "@/components/ui/Field";
-import { Input, TextArea } from "@/components/ui/Input";
+import { Input, Select, TextArea } from "@/components/ui/Input";
 import { PanelActions, PanelHeader } from "@/components/ui/Panel";
 import {
   clampDate,
   clampTime,
-  metersFromDistance,
   shiftTime,
 } from "./helpers";
 import { formatDisplayDate } from "@/utils/dateFormat";
 
-export default function RaceInfo({ race, tournament, saving, onSave }) {
+export default function RaceInfo({
+  race,
+  tournament,
+  saving,
+  venues,
+  distanceOptions,
+  loadingOptions,
+  onSave,
+}) {
   const [draft, setDraft] = useState(race);
   const updateDraft = (patch) => {
     setDraft((previous) => ({ ...previous, ...patch }));
@@ -27,6 +34,10 @@ export default function RaceInfo({ race, tournament, saving, onSave }) {
     draft.date === tournament.endDate
       ? shiftTime(tournament.endTime, -1) || undefined
       : undefined;
+  const distanceIsConfigured = distanceOptions.some(
+    (option) => option.value === draft.distance,
+  );
+  const removedDistance = draft.distance && !distanceIsConfigured;
 
   return (
     <Card>
@@ -109,31 +120,62 @@ export default function RaceInfo({ race, tournament, saving, onSave }) {
           )}
         </Field>
         <Field label="Khoảng cách">
-          <div className="relative">
-            <Input
-              type="number"
-              min="1"
-              step="50"
-              value={metersFromDistance(draft.distance)}
-              onChange={(event) =>
-                updateDraft({
-                  distance: event.target.value
-                    ? `${event.target.value}m`
-                    : "",
-                })
-              }
-              className="pr-14"
-            />
-            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-white/45">
-              m
-            </span>
-          </div>
+          <Select
+            value={draft.distance}
+            disabled={loadingOptions}
+            onChange={(event) => updateDraft({ distance: event.target.value })}
+          >
+            <option value="">{loadingOptions ? "Đang tải..." : "Chọn khoảng cách"}</option>
+            {removedDistance && (
+              <option value={draft.distance} disabled>
+                {draft.distance} - đã xóa khỏi cấu hình
+              </option>
+            )}
+            {distanceOptions.map((option) => (
+              <option key={option.meters} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+          {removedDistance && !loadingOptions && (
+            <p className="mt-2 text-xs font-medium text-amber-300">
+              Khoảng cách hiện tại không còn trong cấu hình. Vui lòng chọn lại trước khi lưu.
+            </p>
+          )}
         </Field>
-        <Field label="Đường đua">
-          <Input
-            value={draft.track}
-            onChange={(event) => updateDraft({ track: event.target.value })}
-          />
+        <Field label="Địa điểm đua">
+          <Select
+            value={draft.venueId || ""}
+            disabled={loadingOptions || !tournament.provinceId}
+            onChange={(event) => {
+              const venue = venues.find((item) => item.id === event.target.value);
+              updateDraft({
+                venueId: event.target.value,
+                venueName: venue?.name || "",
+                venueAddress: venue?.address || "",
+                provinceId: venue?.provinceId || tournament.provinceId,
+                provinceName: venue?.provinceName || tournament.provinceName,
+              });
+            }}
+          >
+            <option value="">
+              {!tournament.provinceId
+                ? "Chọn tỉnh cho giải trước"
+                : loadingOptions
+                  ? "Đang tải..."
+                  : "Chọn địa điểm đua"}
+            </option>
+            {venues.map((venue) => (
+              <option key={venue.id} value={venue.id}>
+                {venue.name}
+              </option>
+            ))}
+          </Select>
+          {draft.venueAddress && (
+            <p className="mt-2 text-xs text-white/45">
+              {draft.venueAddress} - {draft.provinceName || tournament.provinceName}
+            </p>
+          )}
         </Field>
         <Field label="Số ngựa tối thiểu của cuộc đua">
           <Input

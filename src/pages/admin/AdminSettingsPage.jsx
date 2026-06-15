@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { DollarSign, FileText, Mail, Palette, Settings, Shield } from 'lucide-react'
+import { DollarSign, FileText, Mail, MapPin, Palette, Ruler, Settings, Shield } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import LocationSettingsPanel from '@/components/admin/LocationSettingsPanel'
+import RaceDistanceSettingsPanel from '@/components/admin/RaceDistanceSettingsPanel'
 import Field from '@/components/ui/Field'
 import { inputClass } from '@/components/ui/styles'
 
@@ -10,6 +12,8 @@ const tabs = [
   { key: 'email', label: 'Mẫu email', icon: Mail },
   { key: 'security', label: 'Bảo mật', icon: Shield },
   { key: 'brand', label: 'Thương hiệu', icon: Palette },
+  { key: 'locations', label: 'Tỉnh & địa điểm đua', icon: MapPin },
+  { key: 'race-distances', label: 'Khoảng cách đua', icon: Ruler },
 ]
 
 export default function AdminSettingsPage() {
@@ -55,6 +59,11 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        {tab === 'locations' ? (
+          <LocationSettingsPanel />
+        ) : tab === 'race-distances' ? (
+          <RaceDistanceSettingsPanel />
+        ) : (
         <div className="grid gap-5 p-6 md:grid-cols-2">
           {tab === 'fees' && (
             <>
@@ -128,8 +137,9 @@ export default function AdminSettingsPage() {
             </>
           )}
         </div>
+        )}
 
-        <div className="flex justify-end gap-3 px-6 pb-6">
+        {!['locations', 'race-distances'].includes(tab) && <div className="flex justify-end gap-3 px-6 pb-6">
           <button
             type="button"
             className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 font-semibold text-white/70 transition hover:bg-white/[0.08]"
@@ -142,9 +152,8 @@ export default function AdminSettingsPage() {
           >
             Lưu cài đặt
           </button>
-        </div>
+        </div>}
       </section>
     </AdminLayout>
   )
 }
-

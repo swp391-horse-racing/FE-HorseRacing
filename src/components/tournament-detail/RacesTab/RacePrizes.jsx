@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Crown, Gift, Medal, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import Card from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { PanelActions, PanelHeader } from "@/components/ui/Panel";
@@ -47,6 +48,38 @@ export default function RacePrizes({ race, saving, onSave }) {
   };
   const removePrize = (id) => {
     setDraftPrizes((previous) => previous.filter((prize) => prize.id !== id));
+  };
+  const savePrizes = () => {
+    const sorted = [...prizes].sort(
+      (firstPrize, secondPrize) =>
+        Number(firstPrize.rank) - Number(secondPrize.rank),
+    );
+    const ranks = new Set();
+
+    for (const prize of sorted) {
+      if (Number(prize.rank) <= 0) {
+        toast.error("Hạng giải thưởng phải lớn hơn 0");
+        return;
+      }
+      if (ranks.has(Number(prize.rank))) {
+        toast.error("Hạng giải thưởng không được trùng nhau");
+        return;
+      }
+      if (Number(prize.amount) < 0) {
+        toast.error("Số tiền giải thưởng không được âm");
+        return;
+      }
+      ranks.add(Number(prize.rank));
+    }
+
+    for (let index = 1; index < sorted.length; index += 1) {
+      if (Number(sorted[index - 1].amount) <= Number(sorted[index].amount)) {
+        toast.error("Số tiền giải sau phải nhỏ hơn giải trước");
+        return;
+      }
+    }
+
+    onSave(sorted);
   };
 
   return (
@@ -151,7 +184,7 @@ export default function RacePrizes({ race, saving, onSave }) {
         <PanelActions
           saving={saving}
           onCancel={() => setDraftPrizes(normalizePrizeList(race.prizes))}
-          onSave={() => onSave(prizes)}
+          onSave={savePrizes}
         />
       </Card>
       <Card className="h-fit overflow-hidden">

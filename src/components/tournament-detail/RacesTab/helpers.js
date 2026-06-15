@@ -94,6 +94,7 @@ export function getRaceValidationError(races, tournament) {
     if (raceDistance.length > 80) return "Khoảng cách tối đa 80 ký tự";
     if (Number(metersFromDistance(raceDistance)) <= 0)
       return "Khoảng cách phải lớn hơn 0 m";
+    if (!race.venueId) return "Vui lòng chọn địa điểm đua";
     if ((race.description || "").length > 1000)
       return "Mô tả cuộc đua tối đa 1000 ký tự";
     if (!race.date || !race.time)
@@ -109,11 +110,19 @@ export function getRaceValidationError(races, tournament) {
     if (keys.has(raceKey))
       return "Tên cuộc đua và giờ thi đấu không được trùng nhau trong cùng giải";
 
-    for (const prize of normalizePrizeList(race.prizes)) {
+    const prizes = normalizePrizeList(race.prizes);
+    for (const prize of prizes) {
       if (prize.rank <= 0) return "Hạng giải thưởng phải lớn hơn 0";
+      if (Number(prize.amount) < 0) return "Số tiền giải thưởng không được âm";
       if (prizeRanks.has(prize.rank))
         return "Hạng giải thưởng không được trùng nhau trong cùng cuộc đua";
       prizeRanks.add(prize.rank);
+    }
+
+    for (let index = 1; index < prizes.length; index += 1) {
+      if (Number(prizes[index - 1].amount) <= Number(prizes[index].amount)) {
+        return "Số tiền giải sau phải nhỏ hơn giải trước";
+      }
     }
 
     keys.add(raceKey);

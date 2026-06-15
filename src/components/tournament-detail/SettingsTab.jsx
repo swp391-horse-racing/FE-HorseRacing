@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Settings, Trash2 } from 'lucide-react'
@@ -7,19 +7,31 @@ import Field from '@/components/ui/Field'
 import { Input, Select, TextArea } from '@/components/ui/Input'
 import { PanelActions, PanelHeader } from '@/components/ui/Panel'
 import { tournamentService } from '@/services/tournamentService'
+import { locationSettingsService } from '@/services/locationSettingsService'
 import { useApiCacheStore } from '@/store/apiCacheStore'
 import { getApiErrorMessage } from '@/utils/apiError'
 
-const STATUS_OPTIONS = [
-  ['DRAFT', 'Nháp'],
-  ['PUBLISHED', 'Đã công bố'],
-  ['OPEN_REGISTRATION', 'Đang mở đăng ký'],
-  ['REGISTRATION_CLOSED', 'Đã đóng đăng ký'],
-  ['SCHEDULED', 'Đã lên lịch'],
-  ['ONGOING', 'Đang diễn ra'],
-  ['COMPLETED', 'Đã kết thúc'],
-  ['CANCELLED', 'Đã hủy'],
-]
+const STATUS_LABELS = {
+  DRAFT: 'Nháp',
+  PUBLISHED: 'Đã công bố',
+  OPEN_REGISTRATION: 'Đang mở đăng ký',
+  REGISTRATION_CLOSED: 'Đã đóng đăng ký',
+  SCHEDULED: 'Đã lên lịch',
+  ONGOING: 'Đang diễn ra',
+  COMPLETED: 'Đã kết thúc',
+  CANCELLED: 'Đã hủy',
+}
+
+const STATUS_TRANSITIONS = {
+  DRAFT: ['DRAFT', 'PUBLISHED', 'CANCELLED'],
+  PUBLISHED: ['PUBLISHED', 'OPEN_REGISTRATION', 'CANCELLED'],
+  OPEN_REGISTRATION: ['OPEN_REGISTRATION', 'REGISTRATION_CLOSED'],
+  REGISTRATION_CLOSED: ['REGISTRATION_CLOSED', 'SCHEDULED'],
+  SCHEDULED: ['SCHEDULED', 'ONGOING'],
+  ONGOING: ['ONGOING'],
+  COMPLETED: ['COMPLETED'],
+  CANCELLED: ['CANCELLED'],
+}
 
 function dateTime(date, time = '08:00') {
   return `${date}T${time || '08:00'}:00`
@@ -48,11 +60,16 @@ function makeDraft(tournament) {
     name: tournament.name ?? '',
     description: tournament.description ?? '',
     location: tournament.location ?? '',
+    provinceId: tournament.provinceId ?? '',
     registrationOpenDate: tournament.registrationOpenDate ?? '',
     registrationCloseDate: tournament.registrationCloseDate ?? '',
     startDate: tournament.startDate ?? '',
     endDate: tournament.endDate ?? '',
     statusCode: tournament.statusCode ?? 'DRAFT',
+    minTeams: Number(tournament.minTeams || 1),
+    maxTeams: Number(tournament.maxTeams || 1),
+    minHorsesPerOwner: Number(tournament.minHorsesPerOwner || 4),
+    maxHorsesPerOwner: Number(tournament.maxHorsesPerOwner || 10),
   }
 }
 
@@ -63,14 +80,17 @@ function buildUpdatePayload(tournament, draft) {
     name: draft.name.trim(),
     description: draft.description.trim(),
     location: draft.location.trim(),
+    provinceId: Number(draft.provinceId),
     bannerUrl: raw.bannerUrl ?? null,
     registrationOpenAt: dateTime(draft.registrationOpenDate, '08:00'),
     registrationCloseAt: dateTime(draft.registrationCloseDate, '17:00'),
     startAt: dateTime(draft.startDate, tournament.startTime || '08:00'),
     endAt: dateTime(draft.endDate, tournament.endTime || '17:00'),
     checkInDeadlineAt: dateTime(draft.registrationCloseDate, '17:30'),
-    minTeams: Number(tournament.minTeams || raw.minTeams || 1),
-    maxTeams: Number(tournament.maxTeams || raw.maxTeams || 1),
+    minTeams: Number(draft.minTeams),
+    maxTeams: Number(draft.maxTeams),
+    minHorsesPerOwner: Number(draft.minHorsesPerOwner),
+    maxHorsesPerOwner: Number(draft.maxHorsesPerOwner),
     jockeyChallengeEnabled: Boolean(raw.jockeyChallengeEnabled),
     jockeyChallengeFirstPoints: Number(raw.jockeyChallengeFirstPoints || 3),
     jockeyChallengeSecondPoints: Number(raw.jockeyChallengeSecondPoints || 2),
@@ -92,7 +112,11 @@ function getValidationError(draft) {
   const registrationCloseMax = draft.startDate ? addDays(draft.startDate, -2) : ''
 
   if (!draft.name.trim()) return 'Tên giải đấu không được để trống'
-  if (!draft.location.trim()) return 'Địa điểm không được để trống'
+  if (!draft.provinceId) return 'Vui lòng chọn tỉnh/thành phố'
+  if (Number(draft.minTeams) <= 0 || Number(draft.maxTeams) <= 0) return 'Giới hạn đội phải lớn hơn 0'
+  if (Number(draft.minTeams) > Number(draft.maxTeams)) return 'Số đội tối thiểu không được lớn hơn tối đa'
+  if (Number(draft.minHorsesPerOwner) <= 0 || Number(draft.maxHorsesPerOwner) <= 0) return 'Số ngựa mỗi tài khoản phải lớn hơn 0'
+  if (Number(draft.minHorsesPerOwner) > Number(draft.maxHorsesPerOwner)) return 'Số ngựa tối thiểu mỗi tài khoản không được lớn hơn tối đa'
   if (!draft.registrationOpenDate || !draft.registrationCloseDate) return 'Ngày mở và kết thúc đăng ký không được để trống'
   if (draft.registrationOpenDate < registrationOpenMin) return 'Ngày mở đăng ký phải sau ngày tạo ít nhất 1 ngày'
   if (draft.registrationOpenDate > draft.registrationCloseDate) return 'Ngày mở đăng ký không được sau ngày kết thúc đăng ký'
@@ -108,11 +132,41 @@ export default function SettingsTab({ tournament, setTournament }) {
   const [draft, setDraft] = useState(() => makeDraft(tournament))
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [provinces, setProvinces] = useState([])
+  const [loadingProvinces, setLoadingProvinces] = useState(false)
   const today = getTodayDate()
   const registrationOpenMin = addDays(today, 1)
   const startDateMin = addDays(today, 7)
   const registrationCloseMax = draft.startDate ? addDays(draft.startDate, -2) : ''
   const endDateMin = draft.startDate ? addDays(draft.startDate, 1) : startDateMin
+  const statusOptions = STATUS_TRANSITIONS[tournament.statusCode] || [tournament.statusCode]
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadProvinces() {
+      try {
+        setLoadingProvinces(true)
+        const response = await locationSettingsService.getProvinces()
+        if (!cancelled) {
+          setProvinces(
+            response.data.filter(
+              (province) => province.active || province.id === String(tournament.provinceId),
+            ),
+          )
+        }
+      } catch {
+        if (!cancelled) setProvinces([])
+      } finally {
+        if (!cancelled) setLoadingProvinces(false)
+      }
+    }
+
+    loadProvinces()
+    return () => {
+      cancelled = true
+    }
+  }, [tournament.provinceId])
 
   const updateDraft = (patch) => {
     setDraft((previous) => {
@@ -164,10 +218,15 @@ export default function SettingsTab({ tournament, setTournament }) {
         draft.name !== tournament.name ||
         draft.description !== tournament.description ||
         draft.location !== tournament.location ||
+        String(draft.provinceId) !== String(tournament.provinceId) ||
         draft.registrationOpenDate !== tournament.registrationOpenDate ||
         draft.registrationCloseDate !== tournament.registrationCloseDate ||
         draft.startDate !== tournament.startDate ||
-        draft.endDate !== tournament.endDate
+        draft.endDate !== tournament.endDate ||
+        Number(draft.minTeams) !== Number(tournament.minTeams) ||
+        Number(draft.maxTeams) !== Number(tournament.maxTeams) ||
+        Number(draft.minHorsesPerOwner) !== Number(tournament.minHorsesPerOwner) ||
+        Number(draft.maxHorsesPerOwner) !== Number(tournament.maxHorsesPerOwner)
 
       if (baseChanged) {
         const response = await tournamentService.updateTournament(
@@ -234,8 +293,35 @@ export default function SettingsTab({ tournament, setTournament }) {
               onChange={(event) => updateDraft({ description: event.target.value })}
             />
           </Field>
-          <Field label="Địa điểm" full>
-            <Input value={draft.location} onChange={(event) => updateDraft({ location: event.target.value })} />
+          <Field label="Tỉnh/Thành phố" full>
+            <Select
+              value={draft.provinceId}
+              disabled={loadingProvinces}
+              onChange={(event) => {
+                const provinceId = event.target.value
+                if (
+                  tournament.races.length > 0 &&
+                  String(provinceId) !== String(tournament.provinceId) &&
+                  !window.confirm(
+                    'Giải đã có cuộc đua. Backend sẽ từ chối đổi tỉnh nếu địa điểm đua không thuộc tỉnh mới. Tiếp tục chọn?',
+                  )
+                ) {
+                  return
+                }
+                const province = provinces.find((item) => item.id === provinceId)
+                updateDraft({
+                  provinceId,
+                  location: province?.name || draft.location,
+                })
+              }}
+            >
+              <option value="">{loadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'}</option>
+              {provinces.map((province) => (
+                <option key={province.id} value={province.id}>
+                  {province.name}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Ngày mở đăng ký">
             <Input
@@ -271,14 +357,52 @@ export default function SettingsTab({ tournament, setTournament }) {
               onChange={(event) => updateDraft({ endDate: event.target.value })}
             />
           </Field>
+          <Field label="Số đội tối thiểu">
+            <Input
+              type="number"
+              min="1"
+              value={draft.minTeams}
+              onChange={(event) => updateDraft({ minTeams: Number(event.target.value) })}
+            />
+          </Field>
+          <Field label="Số đội tối đa">
+            <Input
+              type="number"
+              min={Math.max(1, Number(draft.minTeams))}
+              value={draft.maxTeams}
+              onChange={(event) => updateDraft({ maxTeams: Number(event.target.value) })}
+            />
+          </Field>
+          <Field label="Số ngựa tối thiểu / tài khoản">
+            <Input
+              type="number"
+              min="1"
+              value={draft.minHorsesPerOwner}
+              onChange={(event) => {
+                const value = Number(event.target.value)
+                updateDraft({
+                  minHorsesPerOwner: value,
+                  maxHorsesPerOwner: Math.max(Number(draft.maxHorsesPerOwner), value),
+                })
+              }}
+            />
+          </Field>
+          <Field label="Số ngựa tối đa / tài khoản">
+            <Input
+              type="number"
+              min={Number(draft.minHorsesPerOwner)}
+              value={draft.maxHorsesPerOwner}
+              onChange={(event) => updateDraft({ maxHorsesPerOwner: Number(event.target.value) })}
+            />
+          </Field>
           <Field label="Trạng thái" full>
             <Select
               value={draft.statusCode}
               onChange={(event) => updateDraft({ statusCode: event.target.value })}
             >
-              {STATUS_OPTIONS.map(([value, label]) => (
+              {statusOptions.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {STATUS_LABELS[value] || value}
                 </option>
               ))}
             </Select>

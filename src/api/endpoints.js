@@ -27,6 +27,18 @@ export const ENDPOINTS = {
     approveRoleApplication: (id) => `/admin/role-applications/${id}/approve`,
     rejectRoleApplication: (id) => `/admin/role-applications/${id}/reject`,
   },
+  locationSettings: {
+    provinces: '/admin/provinces',
+    provinceById: (id) => `/admin/provinces/${id}`,
+    provinceActive: (id) => `/admin/provinces/${id}/active`,
+    provinceVenues: (provinceId) => `/admin/provinces/${provinceId}/venues`,
+    venueById: (id) => `/admin/venues/${id}`,
+    venueActive: (id) => `/admin/venues/${id}/active`,
+  },
+  systemSettings: {
+    admin: '/admin/system-settings',
+    raceDistances: '/admin/system-settings/race-distances',
+  },
   tournaments: {
     adminList: '/admin/tournaments',
     adminById: (id) => `/admin/tournaments/${id}`,
@@ -35,6 +47,7 @@ export const ENDPOINTS = {
     adminRaces: (id) => `/admin/tournaments/${id}/races`,
     adminRaceById: (id) => `/admin/races/${id}`,
     adminRaceRegistrations: (id) => `/admin/tournaments/${id}/race-registrations`,
+    adminVenues: (id) => `/admin/tournaments/${id}/venues`,
     publicList: '/tournaments',
     publicById: (id) => `/tournaments/${id}`,
   },
