@@ -84,3 +84,15 @@ export function TextInput({ className = '', ...rest }) {
     />
   )
 }
+
+export function Select({ value, onChange, children, className = '' }) {
+  return (
+    <select
+      value={value}
+      onChange={onChange}
+      className={`rounded-xl border border-white/10 bg-[#162338] px-4 py-2.5 text-sm text-white focus:border-[#D4A017] focus:outline-none ${className}`}
+    >
+      {children}
+    </select>
+  )
+}
