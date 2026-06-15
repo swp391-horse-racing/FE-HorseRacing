@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Flag, Plus } from "lucide-react";
 import { toast } from "sonner";
 import Card from "@/components/ui/Card";
 import { primaryButton } from "@/components/ui/styles";
 import { tournamentService } from "@/services/tournamentService";
+import { locationSettingsService } from "@/services/locationSettingsService";
+import { systemSettingsService } from "@/services/systemSettingsService";
 import { getApiErrorMessage } from "@/utils/apiError";
 import RaceHeader from "./RaceHeader";
 import RaceGates from "./RaceGates";
@@ -18,11 +20,54 @@ export default function RacesTab({ tournament, setTournament }) {
   const [selectedId, setSelectedId] = useState(tournament.races[0]?.id);
   const [panel, setPanel] = useState("info");
   const [saving, setSaving] = useState(false);
+  const [venues, setVenues] = useState([]);
+  const [distanceOptions, setDistanceOptions] = useState([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
   const selected =
     tournament.races.find((race) => race.id === selectedId) ??
     tournament.races[0];
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOptions() {
+      if (!tournament.provinceId) {
+        setVenues([]);
+        setDistanceOptions([]);
+        return;
+      }
+
+      try {
+        setLoadingOptions(true);
+        const [venuesResponse, settingsResponse] = await Promise.all([
+          locationSettingsService.getTournamentVenues(tournament.id),
+          systemSettingsService.getAdminSettings(),
+        ]);
+        if (!cancelled) {
+          setVenues(venuesResponse.data.filter((venue) => venue.active));
+          setDistanceOptions(settingsResponse.data.raceDistances);
+        }
+      } catch {
+        if (!cancelled) {
+          setVenues([]);
+          setDistanceOptions([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingOptions(false);
+      }
+    }
+
+    loadOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournament.id, tournament.provinceId]);
+
   const addRace = () => {
+    if (!tournament.provinceId) {
+      toast.error("Vui lòng chọn tỉnh/thành phố cho giải đấu trước khi tạo cuộc đua");
+      return;
+    }
     const no = tournament.races.length + 1;
     const race = {
       id: `${tournament.id}-r${no}`,
@@ -32,6 +77,11 @@ export default function RacesTab({ tournament, setTournament }) {
       date: "",
       time: "",
       distance: "",
+      venueId: "",
+      venueName: "",
+      venueAddress: "",
+      provinceId: tournament.provinceId || "",
+      provinceName: tournament.provinceName || "",
       track: "",
       surface: "",
       category: "",
@@ -82,6 +132,17 @@ export default function RacesTab({ tournament, setTournament }) {
       toast.error(
         "Chỉ có thể lưu cấu hình cuộc đua khi giải đấu ở trạng thái Nháp hoặc Đã công bố",
       );
+      return;
+    }
+    if (!tournament.provinceId) {
+      toast.error("Vui lòng chọn tỉnh/thành phố cho giải đấu trước khi tạo cuộc đua");
+      return;
+    }
+    if (
+      nextRace.distance &&
+      !distanceOptions.some((option) => option.value === nextRace.distance)
+    ) {
+      toast.error("Khoảng cách đã bị xóa khỏi cấu hình. Vui lòng chọn lại");
       return;
     }
 
@@ -160,6 +221,9 @@ export default function RacesTab({ tournament, setTournament }) {
             race={selected}
             tournament={tournament}
             saving={saving}
+            venues={venues}
+            distanceOptions={distanceOptions}
+            loadingOptions={loadingOptions}
             onSave={(draft) => saveRace({ ...selected, ...draft })}
           />
         )}

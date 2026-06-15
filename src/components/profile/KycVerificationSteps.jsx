@@ -232,6 +232,11 @@ export default function KycVerificationSteps({ role, onComplete, onProgressChang
           <p className="text-xs text-[#1E3A5F]/60">
             Ảnh chỉ được dùng để xác minh danh tính cho hồ sơ này.
           </p>
+          {step === 'cccd' && (
+            <p className="mt-1 text-xs font-medium text-[#B8941F]">
+              Họ và tên tài khoản phải khớp với họ tên được đọc từ CCCD.
+            </p>
+          )}
         </div>
       </div>
 

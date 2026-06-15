@@ -8,6 +8,7 @@ import {
   Newspaper,
   PawPrint,
   Search,
+  Settings,
   Trophy,
   Users,
   Wallet,
@@ -24,6 +25,7 @@ const ADMIN_NAV = [
   { label: 'Người dùng', to: '/admin/users', icon: Users },
   { label: 'Ngựa', to: '/admin/horses', icon: PawPrint },
   { label: 'Thống kê', to: '/admin/statistics', icon: BarChart3 },
+  { label: 'Cài đặt', to: '/admin/settings', icon: Settings },
   { label: 'Ví hệ thống', to: '/admin/wallet', icon: Wallet },
 ]
 
