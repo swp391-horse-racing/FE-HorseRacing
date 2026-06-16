@@ -22,7 +22,7 @@ export function Select({ children, ...props }) {
 export function TextArea({ variant = 'compact', className = '', ...props }) {
   const base =
     variant === 'form'
-      ? `${controlClass} h-auto resize-none py-5 leading-7`
-      : 'w-full resize-none rounded-xl border border-white/10 bg-white/[0.05] p-4 text-white outline-none focus:border-[#dda50e]/65'
+      ? `${controlClass} scrollbar-dark h-auto resize-none py-5 leading-7`
+      : 'scrollbar-dark w-full resize-none rounded-xl border border-white/10 bg-[#162338] px-4 py-4 text-[15px] leading-7 text-white outline-none placeholder:text-white/30 focus:border-[#dda50e]/65'
   return <textarea {...props} rows={3} className={`${base} ${className}`} />
 }

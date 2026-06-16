@@ -1,6 +1,7 @@
   import { toast } from 'sonner'
   import { getStoredToken, removeStoredToken } from '@/utils/tokenStorage'
   import { isTokenExpired } from '@/utils/jwtDecode'
+  import { isMockDemoToken } from '@/data/testAccounts'
   import { ENDPOINTS } from '@/api/endpoints'
 
   let redirecting = false
@@ -34,7 +35,7 @@
   export function setupInterceptors(client) {
     client.interceptors.request.use((config) => {
       const token = getStoredToken()
-      if (token && !isTokenExpired(token)) {
+      if (token && !isTokenExpired(token) && !isMockDemoToken(token)) {
         config.headers.Authorization = `Bearer ${token}`
       }
       return config
@@ -46,7 +47,7 @@
         const status = error?.response?.status
         const url = error?.config?.url ?? ''
 
-        if (status === 401 && !isAuthEndpoint(url)) {
+        if (status === 401 && !isAuthEndpoint(url) && !isMockDemoToken(getStoredToken())) {
           handleSessionExpired()
         }
 

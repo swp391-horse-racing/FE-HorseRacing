@@ -1,15 +1,49 @@
-import { useMemo, useState } from 'react'
-import { JUDGE_ROLES, MOCK_REFEREES } from '@/data/adminJudgeMock'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { JUDGE_ROLES } from '@/data/adminJudgeMock'
+import { refereeService } from '@/services/refereeService'
+import { publishRaceAssignments } from '@/services/refereeAssignmentService'
+import { getApiErrorMessage } from '@/utils/apiError'
 import AssignedJudgesPanel from './AssignedJudgesPanel'
 import AvailableRefereesPanel from './AvailableRefereesPanel'
 
-export default function JudgeAssigner({ race, onChangeJudges }) {
+export default function JudgeAssigner({ tournament, race, onChangeJudges }) {
   const assignments = race.judges ?? []
-  const [pickRole, setPickRole] = useState(JUDGE_ROLES[0])
+  const [referees, setReferees] = useState([])
+  const [loadingReferees, setLoadingReferees] = useState(true)
+  const [refereeError, setRefereeError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadReferees() {
+      try {
+        setLoadingReferees(true)
+        const data = await refereeService.getAvailableReferees()
+        if (!cancelled) {
+          setReferees(data)
+          setRefereeError('')
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setReferees([])
+          setRefereeError(getApiErrorMessage(error) || 'Không thể tải danh sách trọng tài')
+        }
+      } finally {
+        if (!cancelled) setLoadingReferees(false)
+      }
+    }
+
+    loadReferees()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const refereesById = useMemo(
-    () => new Map(MOCK_REFEREES.map((referee) => [referee.id, referee])),
-    [],
+    () => new Map(referees.map((referee) => [referee.id, referee])),
+    [referees],
   )
   const assignedIds = useMemo(
     () => new Set(assignments.map((item) => item.refereeId)),
@@ -25,8 +59,9 @@ export default function JudgeAssigner({ race, onChangeJudges }) {
     hasDoping &&
     assignments.length >= 3
 
-  const addJudge = (refereeId, role) => {
+  const addJudge = (refereeId) => {
     if (assignedIds.has(refereeId)) return
+    const role = hasChief ? 'Trọng tài biên' : 'Trọng tài chính'
     onChangeJudges([...assignments, { refereeId, role }])
   }
 
@@ -40,21 +75,53 @@ export default function JudgeAssigner({ race, onChangeJudges }) {
     )
   }
 
+  const submitAssignment = async () => {
+    const chief = assignments.find((item) => item.role === 'Trọng tài chính')
+    if (!chief) {
+      toast.error('Phải có trọng tài chính trước khi gửi phân công')
+      return
+    }
+
+    try {
+      setSaving(true)
+      publishRaceAssignments({
+        tournament,
+        race,
+        assignments,
+        refereesById,
+      })
+
+      if (!String(chief.refereeId).startsWith('mock-')) {
+        await refereeService.assignRaceReferee(race.id, chief.refereeId)
+      }
+
+      toast.success('Đã gửi phân công trọng tài. Trọng tài có thể xem cuộc đua được giao.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error) || 'Không thể gửi phân công trọng tài')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <AssignedJudgesPanel
         race={race}
         assignments={assignments}
         refereesById={refereesById}
+        saving={saving}
         onClearAll={() => onChangeJudges([])}
         onRemove={removeJudge}
         onChangeRole={changeRole}
+        onSubmit={submitAssignment}
         ready={ready}
+        hasChief={hasChief}
       />
       <AvailableRefereesPanel
+        referees={referees}
+        loading={loadingReferees}
+        error={refereeError}
         assignedIds={assignedIds}
-        pickRole={pickRole}
-        onPickRole={setPickRole}
         onAdd={addJudge}
       />
     </div>

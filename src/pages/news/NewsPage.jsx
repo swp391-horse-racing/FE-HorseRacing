@@ -75,7 +75,6 @@ export default function NewsPage() {
             <h2 className="mb-4 text-4xl font-bold text-[#1E3A5F]">Danh sach tin tuc</h2>
             <div className="mx-auto h-1 w-24 rounded-full bg-gradient-to-r from-[#D4A017] to-[#F5E6C8]" />
           </div>
-
           {loading ? (
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((item) => (

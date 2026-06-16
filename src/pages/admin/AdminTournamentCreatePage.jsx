@@ -24,13 +24,11 @@ import {
 } from "@/components/ui/styles";
 import { tournamentService } from "@/services/tournamentService";
 import { locationSettingsService } from "@/services/locationSettingsService";
+import { systemSettingsService } from "@/services/systemSettingsService";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const defaultBanner =
   "https://images.unsplash.com/photo-1507514604110-ba3347c457f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080";
-
-const defaultRules =
-  "1. Ngựa phải có giấy chứng nhận sức khỏe hợp lệ.\n2. Jockey phải có chứng chỉ FIA hoặc tương đương.\n3. Tiền phí hoàn lại sau khi giải đấu kết thúc.\n4. Kiểm tra doping bắt buộc với ngựa thắng cuộc.";
 
 function dateTime(date, time) {
   return `${date}T${time}:00`;
@@ -90,7 +88,7 @@ export default function AdminTournamentCreatePage() {
     registrationCloseDate: "",
     startDate: "",
     endDate: "",
-    rules: defaultRules,
+    rules: "",
     banner: defaultBanner,
     minTeams: 1,
     maxTeams: 100,
@@ -101,6 +99,29 @@ export default function AdminTournamentCreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [provinces, setProvinces] = useState([]);
   const [loadingProvinces, setLoadingProvinces] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDefaultRules() {
+      try {
+        const response = await systemSettingsService.getAdminSettings();
+        if (!cancelled) {
+          setForm((previous) => ({
+            ...previous,
+            rules: response.data.defaultTournamentRules || "",
+          }));
+        }
+      } catch {
+        // Keep empty rules; backend will apply its own default on create.
+      }
+    }
+
+    loadDefaultRules();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -403,12 +424,14 @@ export default function AdminTournamentCreatePage() {
               <textarea
                 rows={6}
                 value={form.rules}
-                onChange={(event) => update("rules", event.target.value)}
+                readOnly
+                disabled
                 className={`${controlClass} h-auto resize-none py-4 leading-7`}
               />
               <p className="mt-3 text-sm text-white/42">
-                Luật chi tiết theo từng cuộc đua có thể chỉnh sửa sau trong tab{" "}
-                <span className="text-[#dda50e]">Cấu hình cuộc đua</span>.
+                Luật được đồng bộ từ{" "}
+                <span className="text-[#dda50e]">Cài đặt hệ thống → Luật mặc định</span>.
+                Chỉnh sửa tại đó để áp dụng cho giải mới.
               </p>
             </Field>
 

@@ -125,11 +125,9 @@ function dateTime(date, time) {
 function addOneHourDateTime(date, time = '08:00') {
   if (!date) return dateTime(date, time)
 
-  const [hours = '08', minutes = '00'] = time.split(':')
-  const start = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)), Number(hours), Number(minutes)))
-  start.setUTCHours(start.getUTCHours() + 1)
-
-  return `${start.toISOString().slice(0, 16)}:00`
+  const [hours = '08', minutes = '00'] = (time || '08:00').split(':')
+  const nextHour = Math.min(23, Number(hours) + 1)
+  return `${date}T${String(nextHour).padStart(2, '0')}:${String(Number(minutes)).padStart(2, '0')}:00`
 }
 
 function racePrizeRequests(race) {

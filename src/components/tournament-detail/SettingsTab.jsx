@@ -8,6 +8,7 @@ import { Input, Select, TextArea } from '@/components/ui/Input'
 import { PanelActions, PanelHeader } from '@/components/ui/Panel'
 import { tournamentService, invalidateTournamentListCache } from '@/services/tournamentService'
 import { locationSettingsService } from '@/services/locationSettingsService'
+import { systemSettingsService } from '@/services/systemSettingsService'
 import { useApiCacheStore } from '@/store/apiCacheStore'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -70,6 +71,7 @@ function makeDraft(tournament) {
     maxTeams: Number(tournament.maxTeams || 1),
     minHorsesPerOwner: Number(tournament.minHorsesPerOwner || 4),
     maxHorsesPerOwner: Number(tournament.maxHorsesPerOwner || 10),
+    rules: tournament.rules ?? '',
   }
 }
 
@@ -91,6 +93,7 @@ function buildUpdatePayload(tournament, draft) {
     maxTeams: Number(draft.maxTeams),
     minHorsesPerOwner: Number(draft.minHorsesPerOwner),
     maxHorsesPerOwner: Number(draft.maxHorsesPerOwner),
+    rules: draft.rules.trim(),
     jockeyChallengeEnabled: Boolean(raw.jockeyChallengeEnabled),
     jockeyChallengeFirstPoints: Number(raw.jockeyChallengeFirstPoints || 3),
     jockeyChallengeSecondPoints: Number(raw.jockeyChallengeSecondPoints || 2),
@@ -130,6 +133,7 @@ function getValidationError(draft) {
 export default function SettingsTab({ tournament, setTournament }) {
   const navigate = useNavigate()
   const [draft, setDraft] = useState(() => makeDraft(tournament))
+  const [systemDefaultRules, setSystemDefaultRules] = useState(tournament.rules ?? '')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [provinces, setProvinces] = useState([])
@@ -140,6 +144,32 @@ export default function SettingsTab({ tournament, setTournament }) {
   const registrationCloseMax = draft.startDate ? addDays(draft.startDate, -2) : ''
   const endDateMin = draft.startDate ? addDays(draft.startDate, 1) : startDateMin
   const statusOptions = STATUS_TRANSITIONS[tournament.statusCode] || [tournament.statusCode]
+
+  useEffect(() => {
+    setDraft(makeDraft(tournament))
+  }, [tournament])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function syncDefaultRules() {
+      try {
+        const response = await systemSettingsService.getAdminSettings()
+        if (!cancelled) {
+          const rules = response.data.defaultTournamentRules || ''
+          setSystemDefaultRules(rules)
+          setDraft((previous) => ({ ...previous, rules }))
+        }
+      } catch {
+        // Keep tournament rules if system settings cannot be loaded.
+      }
+    }
+
+    syncDefaultRules()
+    return () => {
+      cancelled = true
+    }
+  }, [tournament.id])
 
   useEffect(() => {
     let cancelled = false
@@ -226,7 +256,8 @@ export default function SettingsTab({ tournament, setTournament }) {
         Number(draft.minTeams) !== Number(tournament.minTeams) ||
         Number(draft.maxTeams) !== Number(tournament.maxTeams) ||
         Number(draft.minHorsesPerOwner) !== Number(tournament.minHorsesPerOwner) ||
-        Number(draft.maxHorsesPerOwner) !== Number(tournament.maxHorsesPerOwner)
+        Number(draft.maxHorsesPerOwner) !== Number(tournament.maxHorsesPerOwner) ||
+        draft.rules.trim() !== (tournament.rules || '').trim()
 
       if (baseChanged) {
         const response = await tournamentService.updateTournament(
@@ -408,8 +439,18 @@ export default function SettingsTab({ tournament, setTournament }) {
               ))}
             </Select>
           </Field>
+          <Field label="Luật giải đấu" full>
+            <TextArea value={draft.rules} disabled rows={8} />
+            <p className="mt-2 text-xs text-white/45">
+              Đồng bộ từ Cài đặt hệ thống → Luật mặc định. Lưu cài đặt để cập nhật luật cho giải này.
+            </p>
+          </Field>
         </div>
-        <PanelActions saving={saving} onCancel={() => setDraft(makeDraft(tournament))} onSave={saveSettings} />
+        <PanelActions
+          saving={saving}
+          onCancel={() => setDraft({ ...makeDraft(tournament), rules: systemDefaultRules })}
+          onSave={saveSettings}
+        />
       </Card>
       <Card className="h-fit border-rose-400/25 bg-rose-400/[0.07] p-6">
         <h3 className="mb-2 text-xl font-bold">Vùng nguy hiểm</h3>

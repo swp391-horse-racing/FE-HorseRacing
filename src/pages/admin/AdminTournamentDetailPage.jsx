@@ -141,7 +141,9 @@ export default function AdminTournamentDetailPage() {
       {selectedTab === 'overview' && (
         <OverviewTab tournament={tournament} totalPrize={totalPrize} totalRegistered={totalRegistered} />
       )}
-      {selectedTab === 'races' && <RacesTab tournament={tournament} setTournament={updateTournament} />}
+      {selectedTab === 'races' && (
+        <RacesTab tournament={tournament} setTournament={updateTournament} onChangeTab={changeTab} />
+      )}
       {selectedTab === 'participants' && <ParticipantsTab tournament={tournament} />}
       {selectedTab === 'schedule' && <ScheduleTab tournament={tournament} />}
       {selectedTab === 'results' && <ResultsTab tournament={tournament} />}

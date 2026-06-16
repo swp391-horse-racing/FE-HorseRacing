@@ -50,7 +50,13 @@ export default function TournamentJudgeWorkspace({ tournament, onBack }) {
             />
           </div>
           <div className="min-w-0 lg:col-span-8">
-            {activeRace ? <JudgeAssigner race={activeRace} onChangeJudges={updateRaceJudges} /> : null}
+            {activeRace ? (
+              <JudgeAssigner
+                tournament={tournament}
+                race={activeRace}
+                onChangeJudges={updateRaceJudges}
+              />
+            ) : null}
           </div>
         </div>
       )}

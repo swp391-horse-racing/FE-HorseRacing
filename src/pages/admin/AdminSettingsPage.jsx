@@ -1,17 +1,15 @@
 import { useState } from 'react'
-import { DollarSign, FileText, Mail, MapPin, Palette, Ruler, Settings, Shield } from 'lucide-react'
+import { DollarSign, FileText, MapPin, Ruler, Settings } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import LocationSettingsPanel from '@/components/admin/LocationSettingsPanel'
 import RaceDistanceSettingsPanel from '@/components/admin/RaceDistanceSettingsPanel'
+import DefaultRulesSettingsPanel from '@/components/admin/DefaultRulesSettingsPanel'
 import Field from '@/components/ui/Field'
 import { inputClass } from '@/components/ui/styles'
 
 const tabs = [
   { key: 'fees', label: 'Lệ phí mặc định', icon: DollarSign },
   { key: 'rules', label: 'Luật mặc định', icon: FileText },
-  { key: 'email', label: 'Mẫu email', icon: Mail },
-  { key: 'security', label: 'Bảo mật', icon: Shield },
-  { key: 'brand', label: 'Thương hiệu', icon: Palette },
   { key: 'locations', label: 'Tỉnh & địa điểm đua', icon: MapPin },
   { key: 'race-distances', label: 'Khoảng cách đua', icon: Ruler },
 ]
@@ -25,7 +23,7 @@ export default function AdminSettingsPage() {
       highlight="Hệ thống"
       subtitle="Cấu hình mặc định dùng chung cho toàn bộ nền tảng admin"
     >
-      <section className="mb-6 flex flex-wrap gap-2 rounded-3xl border border-white/10 bg-white/[0.045] p-2">
+      <section className="mb-8 flex flex-wrap gap-2 rounded-3xl border border-white/10 bg-white/[0.045] p-2">
         {tabs.map((item) => {
           const Icon = item.icon
           const active = tab === item.key
@@ -37,7 +35,7 @@ export default function AdminSettingsPage() {
               onClick={() => setTab(item.key)}
               className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                 active
-                  ? 'bg-[#dda50e] text-white shadow-lg shadow-[#d4a017]/30'
+                  ? 'bg-[#dda50e] text-white ring-1 ring-[#f0c14b]/35'
                   : 'text-white/60 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -63,6 +61,8 @@ export default function AdminSettingsPage() {
           <LocationSettingsPanel />
         ) : tab === 'race-distances' ? (
           <RaceDistanceSettingsPanel />
+        ) : tab === 'rules' ? (
+          <DefaultRulesSettingsPanel />
         ) : (
         <div className="grid gap-5 p-6 md:grid-cols-2">
           {tab === 'fees' && (
@@ -75,84 +75,25 @@ export default function AdminSettingsPage() {
               </Field>
             </>
           )}
-
-          {tab === 'rules' && (
-            <Field label="Luật mẫu áp dụng cho giải đấu mới" full>
-              <textarea
-                rows={10}
-                defaultValue={
-                  '1. Ngựa phải có giấy chứng nhận sức khỏe hợp lệ.\n2. Jockey phải có chứng chỉ FIA.\n3. Kiểm tra doping bắt buộc.'
-                }
-                className={`${inputClass} h-auto resize-none py-4`}
-              />
-            </Field>
-          )}
-
-          {tab === 'email' && (
-            <>
-              <Field label="Mẫu mở đăng ký" full>
-                <input
-                  defaultValue="[HorseRacing] Mở đăng ký giải đấu {{tournament}}"
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Mẫu nhắc check-in" full>
-                <input
-                  defaultValue="[HorseRacing] Nhắc check-in cuộc đua {{race}}"
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Mẫu công bố kết quả" full>
-                <input
-                  defaultValue="[HorseRacing] Kết quả cuộc đua {{race}}"
-                  className={inputClass}
-                />
-              </Field>
-            </>
-          )}
-
-          {tab === 'security' && (
-            <>
-              <Field label="Xác thực 2 yếu tố">
-                <select defaultValue="admin" className={inputClass}>
-                  <option value="admin">Bật cho Admin</option>
-                  <option value="all">Bắt buộc tất cả</option>
-                  <option value="off">Tắt</option>
-                </select>
-              </Field>
-              <Field label="Thời gian phiên (phút)">
-                <input type="number" defaultValue={60} className={inputClass} />
-              </Field>
-            </>
-          )}
-
-          {tab === 'brand' && (
-            <>
-              <Field label="Tên hệ thống">
-                <input defaultValue="Horse Racing Admin" className={inputClass} />
-              </Field>
-              <Field label="Màu chính">
-                <input defaultValue="#D4A017" className={inputClass} />
-              </Field>
-            </>
-          )}
         </div>
         )}
 
-        {!['locations', 'race-distances'].includes(tab) && <div className="flex justify-end gap-3 px-6 pb-6">
+        {!['locations', 'race-distances', 'rules'].includes(tab) && (
+          <div className="flex justify-end gap-3 border-t border-white/10 px-6 py-5">
           <button
             type="button"
-            className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 font-semibold text-white/70 transition hover:bg-white/[0.08]"
+            className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 font-semibold text-white/70 transition hover:bg-white/[0.08]"
           >
             Hủy
           </button>
           <button
             type="button"
-            className="rounded-2xl bg-[#dda50e] px-5 py-3 font-semibold text-white shadow-lg shadow-[#d4a017]/20 transition hover:bg-[#c8940f]"
+            className="flex h-11 items-center gap-2 rounded-xl bg-[#dda50e] px-5 font-semibold text-white transition hover:bg-[#c8940f]"
           >
             Lưu cài đặt
           </button>
-        </div>}
+        </div>
+        )}
       </section>
     </AdminLayout>
   )

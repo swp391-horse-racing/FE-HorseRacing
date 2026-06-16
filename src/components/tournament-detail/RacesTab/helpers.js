@@ -47,26 +47,161 @@ export function formatDistance(distance) {
   return meters ? `${meters}m` : "";
 }
 
+export function getEffectiveProvinceId(tournament, race) {
+  return (
+    tournament?.provinceId ||
+    tournament?.raw?.provinceId ||
+    race?.provinceId ||
+    ""
+  );
+}
+
+export function matchProvinceForTournament(tournament, provinces) {
+  const location = (tournament?.location || "").trim().toLowerCase();
+  const provinceName = (tournament?.provinceName || "").trim().toLowerCase();
+
+  return provinces.find((province) => {
+    if (!province.active) return false;
+
+    const name = (province.name || "").trim().toLowerCase();
+    const code = (province.code || "").trim().toLowerCase();
+
+    return (
+      (provinceName && provinceName === name) ||
+      (location && location === name) ||
+      (location && code && location === code) ||
+      (location && name.includes(location)) ||
+      (location && location.includes(name))
+    );
+  });
+}
+
 function toDateTimeValue(date, time = "08:00") {
   return `${date}T${time || "08:00"}`;
 }
 
 function addOneHourDateTimeValue(date, time = "08:00") {
   if (!date) return "";
+  return toDateTimeValue(date, shiftTime(time || "08:00", 1));
+}
 
-  const [hours = "08", minutes = "00"] = time.split(":");
-  const start = new Date(
-    Date.UTC(
-      Number(date.slice(0, 4)),
-      Number(date.slice(5, 7)) - 1,
-      Number(date.slice(8, 10)),
-      Number(hours),
-      Number(minutes),
-    ),
-  );
-  start.setUTCHours(start.getUTCHours() + 1);
+export function buildDefaultRace(
+  tournament,
+  no,
+  distanceOptions = [],
+  venues = [],
+  defaultRegistrationFee = 0,
+) {
+  const defaultVenue = venues[0];
+  const defaultDistance = distanceOptions[0]?.value || "1000m";
+  const fee = Number(defaultRegistrationFee) || 0;
 
-  return start.toISOString().slice(0, 16);
+  return {
+    id: `${tournament.id}-draft-${Date.now()}-${no}`,
+    no,
+    name: `Cuộc đua ${no}`,
+    description: "",
+    date: tournament.startDate || "",
+    time: tournament.startTime || "08:00",
+    distance: defaultDistance,
+    venueId: defaultVenue?.id || "",
+    venueName: defaultVenue?.name || "",
+    venueAddress: defaultVenue?.address || "",
+    provinceId: tournament.provinceId || defaultVenue?.provinceId || "",
+    provinceName: tournament.provinceName || defaultVenue?.provinceName || "",
+    track: "",
+    surface: "",
+    category: "",
+    minHorses: 8,
+    maxHorses: 12,
+    registered: 0,
+    entryFee: fee,
+    checkIn: tournament.startTime || "08:00",
+    status: "Nháp",
+    prizes: [
+      { id: `prize-${no}-1`, rank: 1, itemName: "Giải nhất", amount: 10000000 },
+      { id: `prize-${no}-2`, rank: 2, itemName: "Giải nhì", amount: 5000000 },
+      { id: `prize-${no}-3`, rank: 3, itemName: "Giải ba", amount: 3000000 },
+    ],
+    isNew: true,
+  };
+}
+
+export function applyOptionDefaults(
+  race,
+  distanceOptions = [],
+  venues = [],
+  defaultRegistrationFee = 0,
+) {
+  const next = { ...race };
+  if (!next.distance && distanceOptions[0]?.value) {
+    next.distance = distanceOptions[0].value;
+  }
+  if (!next.venueId && venues[0]?.id) {
+    next.venueId = venues[0].id;
+    next.venueName = venues[0].name;
+    next.venueAddress = venues[0].address;
+    next.provinceId = venues[0].provinceId || next.provinceId;
+    next.provinceName = venues[0].provinceName || next.provinceName;
+  }
+  if (
+    (next.entryFee === "" || next.entryFee == null || Number(next.entryFee) === 0) &&
+    Number(defaultRegistrationFee) > 0
+  ) {
+    next.entryFee = Number(defaultRegistrationFee);
+  }
+  if (!next.date && race.date === "") {
+    // keep empty if tournament has no start date
+  }
+  if (!next.minHorses) next.minHorses = 8;
+  if (!next.maxHorses) next.maxHorses = 12;
+  return next;
+}
+
+const RACE_DURATION_MINUTES = 60;
+const MIN_RACE_GAP_MINUTES = 45;
+
+function timeToMinutes(time) {
+  const [hour = "0", minute = "0"] = String(time || "00:00").split(":");
+  return Number(hour) * 60 + Number(minute);
+}
+
+function getRaceIntervalMinutes(race) {
+  const start = timeToMinutes(race.time);
+  return { start, end: start + RACE_DURATION_MINUTES };
+}
+
+function getSameDayScheduleError(firstRace, secondRace) {
+  if (!firstRace?.date || !secondRace?.date || firstRace.date !== secondRace.date) {
+    return "";
+  }
+  if (!firstRace?.time || !secondRace?.time) return "";
+
+  const first = getRaceIntervalMinutes(firstRace);
+  const second = getRaceIntervalMinutes(secondRace);
+
+  if (first.start === second.start) {
+    return "Không được có hai cuộc đua cùng ngày và cùng giờ thi đấu";
+  }
+
+  const earlier = first.start <= second.start ? first : second;
+  const later = first.start <= second.start ? second : first;
+
+  if (later.start < earlier.end + MIN_RACE_GAP_MINUTES) {
+    return `Các cuộc đua trong cùng ngày phải cách nhau ít nhất ${MIN_RACE_GAP_MINUTES} phút`;
+  }
+
+  return "";
+}
+
+function getRaceScheduleConflictError(races) {
+  for (let index = 0; index < races.length; index += 1) {
+    for (let compareIndex = index + 1; compareIndex < races.length; compareIndex += 1) {
+      const conflict = getSameDayScheduleError(races[index], races[compareIndex]);
+      if (conflict) return conflict;
+    }
+  }
+  return "";
 }
 
 export function getRaceValidationError(races, tournament) {
@@ -128,5 +263,5 @@ export function getRaceValidationError(races, tournament) {
     keys.add(raceKey);
   }
 
-  return "";
+  return getRaceScheduleConflictError(races);
 }

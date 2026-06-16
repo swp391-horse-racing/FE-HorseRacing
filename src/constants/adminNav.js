@@ -1,6 +1,4 @@
 import {
-  BarChart3,
-  Bell,
   Gavel,
   LayoutDashboard,
   Newspaper,
@@ -18,8 +16,6 @@ export const ADMIN_NAV = [
   { label: 'Tin tức', to: '/admin/news', icon: Newspaper },
   { label: 'Người dùng', to: '/admin/users', icon: Users },
   { label: 'Ngựa', to: '/admin/horses', icon: PawPrint },
-  { label: 'Thống kê', to: '/admin/statistics', icon: BarChart3 },
   { label: 'Ví hệ thống', to: '/admin/wallet', icon: Wallet },
-  { label: 'Thông báo', to: '/admin/notifications', icon: Bell },
   { label: 'Cài đặt', to: '/admin/settings', icon: Settings },
 ]

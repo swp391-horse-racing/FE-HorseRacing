@@ -1,15 +1,18 @@
 import { Gavel, Send, Trash2 } from 'lucide-react'
 import { GhostButton, GlassCard, Pill, PrimaryButton, Select } from '@/pages/admin/AdminLayout'
-import { JUDGE_ROLES, judgeStatusTone, refereeInitial, refereeLevelTone } from '@/data/adminJudgeMock'
+import { JUDGE_ROLES, judgeStatusTone, refereeInitial } from '@/data/adminJudgeMock'
 
 export default function AssignedJudgesPanel({
   race,
   assignments,
   refereesById,
+  saving = false,
   onClearAll,
   onRemove,
   onChangeRole,
+  onSubmit,
   ready,
+  hasChief,
 }) {
   return (
     <GlassCard>
@@ -64,10 +67,11 @@ export default function AssignedJudgesPanel({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-bold text-white">{referee.name}</span>
-                  <Pill tone={refereeLevelTone(referee.level)}>{referee.level}</Pill>
                 </div>
                 <div className="truncate text-[11px] text-white/50">
-                  {referee.license} · {referee.experience} năm KN · {referee.specialty}
+                  {referee.license}
+                  {referee.experience > 0 ? ` · ${referee.experience} năm KN` : ''}
+                  {referee.specialty ? ` · ${referee.specialty}` : ''}
                 </div>
               </div>
               <Select
@@ -95,8 +99,8 @@ export default function AssignedJudgesPanel({
 
       {assignments.length > 0 ? (
         <div className="flex justify-end p-5 pt-0">
-          <PrimaryButton icon={Send} disabled={!ready}>
-            Gửi quyết định phân công
+          <PrimaryButton icon={Send} disabled={!hasChief || saving} onClick={onSubmit}>
+            {saving ? 'Đang gửi...' : 'Gửi quyết định phân công'}
           </PrimaryButton>
         </div>
       ) : null}

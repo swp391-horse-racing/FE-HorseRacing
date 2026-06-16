@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Flag, Plus } from "lucide-react";
 import { toast } from "sonner";
 import Card from "@/components/ui/Card";
@@ -14,39 +15,127 @@ import RaceList from "./RaceList";
 import RacePrizes from "./RacePrizes";
 import RaceRegistrations from "./RaceRegistrations";
 import RaceResults from "./RaceResults";
-import { getRaceValidationError, mergeDraftRaces } from "./helpers";
+import {
+  applyOptionDefaults,
+  buildDefaultRace,
+  getEffectiveProvinceId,
+  getRaceValidationError,
+  matchProvinceForTournament,
+  mergeDraftRaces,
+} from "./helpers";
 
-export default function RacesTab({ tournament, setTournament }) {
+export default function RacesTab({ tournament, setTournament, onChangeTab }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoCreateHandled = useRef(false);
   const [selectedId, setSelectedId] = useState(tournament.races[0]?.id);
   const [panel, setPanel] = useState("info");
   const [saving, setSaving] = useState(false);
   const [venues, setVenues] = useState([]);
   const [distanceOptions, setDistanceOptions] = useState([]);
+  const [defaultRegistrationFee, setDefaultRegistrationFee] = useState(0);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const selected =
     tournament.races.find((race) => race.id === selectedId) ??
     tournament.races[0];
+  const provinceId = getEffectiveProvinceId(tournament, selected);
+
+  useEffect(() => {
+    if (provinceId) return;
+
+    let cancelled = false;
+
+    async function resolveProvince() {
+      try {
+        const response = await locationSettingsService.getProvinces();
+        const match = matchProvinceForTournament(tournament, response.data);
+
+        if (match && !cancelled) {
+          setTournament((current) =>
+            getEffectiveProvinceId(current)
+              ? current
+              : {
+                  ...current,
+                  provinceId: match.id,
+                  provinceName: match.name,
+                },
+          );
+        }
+      } catch {
+        // Ignore province auto-match errors.
+      }
+    }
+
+    resolveProvince();
+  }, [
+    provinceId,
+    setTournament,
+    tournament.id,
+    tournament.location,
+    tournament.provinceName,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadOptions() {
-      if (!tournament.provinceId) {
-        setVenues([]);
-        setDistanceOptions([]);
-        return;
+    async function loadVenues(resolvedProvinceId) {
+      try {
+        const response = await locationSettingsService.getTournamentVenues(tournament.id);
+        return response.data.filter((venue) => venue.active);
+      } catch {
+        if (!resolvedProvinceId) return [];
+        const fallback = await locationSettingsService.getVenuesByProvince(resolvedProvinceId);
+        return fallback.data.filter((venue) => venue.active);
       }
+    }
+
+    async function loadOptions() {
+      setLoadingOptions(true);
 
       try {
-        setLoadingOptions(true);
-        const [venuesResponse, settingsResponse] = await Promise.all([
-          locationSettingsService.getTournamentVenues(tournament.id),
+        const effectiveProvinceId =
+          provinceId ||
+          getEffectiveProvinceId(tournament) ||
+          tournament.raw?.provinceId ||
+          "";
+
+        const [settingsResponse, nextVenues] = await Promise.all([
           systemSettingsService.getAdminSettings(),
+          effectiveProvinceId
+            ? loadVenues(String(effectiveProvinceId))
+            : Promise.resolve([]),
         ]);
-        if (!cancelled) {
-          setVenues(venuesResponse.data.filter((venue) => venue.active));
-          setDistanceOptions(settingsResponse.data.raceDistances);
-        }
+
+        if (cancelled) return;
+
+        const nextDistances = settingsResponse.data.raceDistances;
+        const nextDefaultFee = Number(settingsResponse.data.defaultRegistrationFee ?? 0);
+
+        setDistanceOptions(nextDistances);
+        setDefaultRegistrationFee(nextDefaultFee);
+        setVenues(nextVenues);
+
+        setTournament((current) => {
+          let changed = false;
+          const nextRaces = current.races.map((race) => {
+            if (!race.isNew) return race;
+            const next = applyOptionDefaults(
+              race,
+              nextDistances,
+              nextVenues,
+              nextDefaultFee,
+            );
+            if (
+              next.venueId !== race.venueId ||
+              next.distance !== race.distance ||
+              next.entryFee !== race.entryFee
+            ) {
+              changed = true;
+            }
+            return next;
+          });
+
+          return changed ? { ...current, races: nextRaces } : current;
+        });
       } catch {
         if (!cancelled) {
           setVenues([]);
@@ -61,50 +150,89 @@ export default function RacesTab({ tournament, setTournament }) {
     return () => {
       cancelled = true;
     };
-  }, [tournament.id, tournament.provinceId]);
+  }, [provinceId, setTournament, tournament.id]);
 
   const addRace = () => {
-    if (!tournament.provinceId) {
-      toast.error("Vui lòng chọn tỉnh/thành phố cho giải đấu trước khi tạo cuộc đua");
+    if (!provinceId) {
+      toast.error("Vui lòng chọn tỉnh/thành phố ở tab Cài đặt trước khi tạo cuộc đua");
+      onChangeTab?.("settings");
       return;
     }
-    const no = tournament.races.length + 1;
-    const race = {
-      id: `${tournament.id}-r${no}`,
-      no,
-      name: "",
-      description: "",
-      date: "",
-      time: "",
-      distance: "",
-      venueId: "",
-      venueName: "",
-      venueAddress: "",
-      provinceId: tournament.provinceId || "",
-      provinceName: tournament.provinceName || "",
-      track: "",
-      surface: "",
-      category: "",
-      minHorses: "",
-      maxHorses: "",
-      registered: 0,
-      entryFee: "",
-      checkIn: "",
-      status: "Nháp",
-      prizes: [],
-      isNew: true,
-    };
-    setTournament({ ...tournament, races: [...tournament.races, race] });
-    setSelectedId(race.id);
-  };
 
-  const removeRace = async () => {
-    const nextRaces = tournament.races.filter(
-      (race) => race.id !== selected.id,
+    if (!venues.length && !loadingOptions) {
+      toast.error("Chưa có địa điểm đua cho tỉnh này. Hãy thêm venue trong Cài đặt hệ thống.");
+      return;
+    }
+
+    const race = buildDefaultRace(
+      tournament,
+      tournament.races.length + 1,
+      distanceOptions,
+      venues,
+      defaultRegistrationFee,
     );
 
+    setTournament((current) => ({
+      ...current,
+      races: [...current.races, race],
+    }));
+    setSelectedId(race.id);
+    setPanel("info");
+  };
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1" || autoCreateHandled.current) return;
+    if (loadingOptions) return;
+
+    autoCreateHandled.current = true;
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    setSearchParams(next, { replace: true });
+
+    if (tournament.races.length > 0) return;
+
+    if (!provinceId) {
+      toast.message("Chọn tỉnh/thành phố ở tab Cài đặt, sau đó bấm Tạo cuộc đua");
+      return;
+    }
+    if (!venues.length) {
+      toast.message("Chưa có địa điểm đua cho tỉnh này. Hãy thêm venue trước.");
+      return;
+    }
+
+    const race = buildDefaultRace(
+      tournament,
+      tournament.races.length + 1,
+      distanceOptions,
+      venues,
+      defaultRegistrationFee,
+    );
+    setTournament((current) => ({
+      ...current,
+      races: [...current.races, race],
+    }));
+    setSelectedId(race.id);
+    setPanel("info");
+  }, [
+    defaultRegistrationFee,
+    distanceOptions,
+    loadingOptions,
+    provinceId,
+    searchParams,
+    setSearchParams,
+    setTournament,
+    tournament.id,
+    tournament.races.length,
+    venues,
+  ]);
+
+  const removeRace = async () => {
+    if (!selected) return;
+
+    const nextRaces = tournament.races.filter((race) => race.id !== selected.id);
+
     if (selected.isNew) {
-      setTournament({ ...tournament, races: nextRaces });
+      setTournament((current) => ({ ...current, races: nextRaces }));
       setSelectedId(nextRaces[0]?.id);
       return;
     }
@@ -125,27 +253,29 @@ export default function RacesTab({ tournament, setTournament }) {
   };
 
   const saveRace = async (nextRace) => {
-    const nextRaces = tournament.races.map((race) =>
-      race.id === selected.id ? nextRace : race,
-    );
     if (!["DRAFT", "PUBLISHED"].includes(tournament.statusCode)) {
       toast.error(
         "Chỉ có thể lưu cấu hình cuộc đua khi giải đấu ở trạng thái Nháp hoặc Đã công bố",
       );
       return;
     }
-    if (!tournament.provinceId) {
-      toast.error("Vui lòng chọn tỉnh/thành phố cho giải đấu trước khi tạo cuộc đua");
+    if (!provinceId) {
+      toast.error("Vui lòng lưu tỉnh/thành phố của giải ở tab Cài đặt trước");
+      onChangeTab?.("settings");
       return;
     }
     if (
       nextRace.distance &&
+      distanceOptions.length > 0 &&
       !distanceOptions.some((option) => option.value === nextRace.distance)
     ) {
       toast.error("Khoảng cách đã bị xóa khỏi cấu hình. Vui lòng chọn lại");
       return;
     }
 
+    const nextRaces = tournament.races.map((race) =>
+      race.id === selected.id ? nextRace : race,
+    );
     const validationError = getRaceValidationError(nextRaces, tournament);
     if (validationError) {
       toast.error(validationError);
@@ -189,16 +319,56 @@ export default function RacesTab({ tournament, setTournament }) {
       <Card className="p-16 text-center">
         <Flag className="mx-auto mb-5 h-14 w-14 text-[#dda50e]" />
         <h2 className="mb-3 text-2xl font-bold">Chưa có cuộc đua nào</h2>
-        <button type="button" onClick={addRace} className={primaryButton}>
-          <Plus className="h-5 w-5" />
-          Tạo cuộc đua đầu tiên
-        </button>
+        {!provinceId ? (
+          <p className="mx-auto mb-6 max-w-xl text-sm text-amber-200">
+            Giải đấu chưa có tỉnh/thành phố. Vào tab <strong>Cài đặt</strong>, chọn tỉnh và
+            bấm Lưu, sau đó quay lại để tạo cuộc đua.
+          </p>
+        ) : venues.length === 0 && !loadingOptions ? (
+          <p className="mx-auto mb-6 max-w-xl text-sm text-amber-200">
+            Tỉnh <strong>{tournament.provinceName || tournament.location}</strong> chưa có địa
+            điểm đua. Hãy thêm venue trong phần cài đặt địa điểm hệ thống trước.
+          </p>
+        ) : (
+          <p className="mx-auto mb-6 max-w-xl text-sm text-white/55">
+            Bấm nút bên dưới để tạo cuộc đua đầu tiên cho giải này.
+          </p>
+        )}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {!provinceId && (
+            <button
+              type="button"
+              onClick={() => onChangeTab?.("settings")}
+              className={primaryButton}
+            >
+              Mở tab Cài đặt
+            </button>
+          )}
+          <button type="button" onClick={addRace} className={primaryButton}>
+            <Plus className="h-5 w-5" />
+            Tạo cuộc đua đầu tiên
+          </button>
+        </div>
       </Card>
     );
   }
 
   return (
     <div className="grid gap-7 xl:grid-cols-[360px_1fr]">
+      {!provinceId && (
+        <Card className="xl:col-span-2 border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          Giải đấu chưa có tỉnh/thành phố trên hệ thống. Vui lòng lưu tỉnh ở tab{" "}
+          <button
+            type="button"
+            className="font-semibold underline"
+            onClick={() => onChangeTab?.("settings")}
+          >
+            Cài đặt
+          </button>{" "}
+          trước khi lưu cuộc đua lên server.
+        </Card>
+      )}
+
       <RaceList
         races={tournament.races}
         selectedId={selected.id}
@@ -224,6 +394,8 @@ export default function RacesTab({ tournament, setTournament }) {
             venues={venues}
             distanceOptions={distanceOptions}
             loadingOptions={loadingOptions}
+            defaultRegistrationFee={defaultRegistrationFee}
+            onGoToSettings={() => onChangeTab?.("settings")}
             onSave={(draft) => saveRace({ ...selected, ...draft })}
           />
         )}

@@ -22,8 +22,8 @@ export const REFEREE_NAV = [
   { label: 'Cuộc đua được giao', to: '/referee/races', icon: Flag },
   { label: 'Vi phạm đã ghi', to: '/referee/violations', icon: ClipboardCheck },
   { label: 'Lịch sử', to: '/referee/history', icon: History },
-  { label: 'Ví của tôi', to: '/referee/wallet', icon: Wallet },
   { label: 'Thông báo', to: '/referee/notifications', icon: Bell },
+  { label: 'Ví của tôi', to: '/referee/wallet', icon: Wallet },
 ]
 
 export function RefereeLayout({ children, title, subtitle, actions }) {

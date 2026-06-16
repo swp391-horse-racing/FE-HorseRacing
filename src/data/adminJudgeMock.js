@@ -6,17 +6,6 @@ export const JUDGE_ROLES = [
   'Giám sát doping',
 ]
 
-export const MOCK_REFEREES = [
-  { id: 'ref-01', name: 'Lê Trọng Tài', license: 'TT-2019-001', level: 'Quốc tế', experience: 12, specialty: 'Đua tốc độ' },
-  { id: 'ref-02', name: 'Nguyễn Công Minh', license: 'TT-2020-014', level: 'Quốc gia', experience: 9, specialty: 'Đường đua cỏ' },
-  { id: 'ref-03', name: 'Trần Thị Hồng', license: 'TT-2018-007', level: 'Quốc tế', experience: 14, specialty: 'Giám sát doping' },
-  { id: 'ref-04', name: 'Phạm Văn Đức', license: 'TT-2021-022', level: 'Khu vực', experience: 6, specialty: 'Xuất phát' },
-  { id: 'ref-05', name: 'Hoàng Anh Tuấn', license: 'TT-2017-003', level: 'Quốc gia', experience: 11, specialty: 'Trọng tài đích' },
-  { id: 'ref-06', name: 'Vũ Thị Lan', license: 'TT-2022-031', level: 'Khu vực', experience: 4, specialty: 'Trọng tài biên' },
-  { id: 'ref-07', name: 'Đặng Quốc Bảo', license: 'TT-2019-018', level: 'Quốc gia', experience: 8, specialty: 'Đường đua đất' },
-  { id: 'ref-08', name: 'Bùi Hải Nam', license: 'TT-2020-026', level: 'Khu vực', experience: 7, specialty: 'Giám sát doping' },
-]
-
 const BANNER_A =
   'https://images.unsplash.com/photo-1507514604110-ba3347c457f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
 const BANNER_B =
@@ -107,3 +96,66 @@ export function refereeInitial(name) {
   const parts = name.trim().split(/\s+/)
   return parts[parts.length - 1]?.[0]?.toUpperCase() ?? '?'
 }
+
+export const MOCK_REFEREES = [
+  {
+    id: 'mock-ref-001',
+    name: 'Lê Trọng Tài',
+    license: 'VN-REF-001',
+    experience: 12,
+    specialty: 'Trọng tài chính · Phú Thọ',
+    email: 'le.trongtai@horseracing.vn',
+    phone: '0901234567',
+    active: true,
+  },
+  {
+    id: 'mock-ref-002',
+    name: 'Phạm Minh Quân',
+    license: 'VN-REF-002',
+    experience: 8,
+    specialty: 'Trọng tài biên · Hà Nội',
+    email: 'pham.minhquan@horseracing.vn',
+    phone: '0912345678',
+    active: true,
+  },
+  {
+    id: 'mock-ref-003',
+    name: 'Nguyễn Hoàng Nam',
+    license: 'VN-REF-003',
+    experience: 10,
+    specialty: 'Giám sát doping · TP.HCM',
+    email: 'nguyen.hoangnam@horseracing.vn',
+    phone: '0923456789',
+    active: true,
+  },
+  {
+    id: 'mock-ref-004',
+    name: 'Trần Văn Hùng',
+    license: 'VN-REF-004',
+    experience: 6,
+    specialty: 'Trọng tài xuất phát · Đà Lạt',
+    email: 'tran.vanhung@horseracing.vn',
+    phone: '0934567890',
+    active: true,
+  },
+  {
+    id: 'mock-ref-005',
+    name: 'Võ Thị Mai',
+    license: 'VN-REF-005',
+    experience: 9,
+    specialty: 'Trọng tài đích · Cần Thơ',
+    email: 'vo.thimai@horseracing.vn',
+    phone: '0945678901',
+    active: true,
+  },
+  {
+    id: 'mock-ref-006',
+    name: 'Đặng Quốc Bảo',
+    license: 'VN-REF-006',
+    experience: 5,
+    specialty: 'Trọng tài biên · Bình Dương',
+    email: 'dang.quocbao@horseracing.vn',
+    phone: '0956789012',
+    active: true,
+  },
+]

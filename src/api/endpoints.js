@@ -51,6 +51,9 @@ export const ENDPOINTS = {
     publicList: '/tournaments',
     publicById: (id) => `/tournaments/${id}`,
   },
+  races: {
+    assignReferee: (id) => `/admin/races/${id}/referee`,
+  },
   news: {
     list: '/news',
     all: '/news/all',
