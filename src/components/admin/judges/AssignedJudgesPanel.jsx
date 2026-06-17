@@ -1,18 +1,14 @@
 import { Gavel, Send, Trash2 } from 'lucide-react'
-import { GhostButton, GlassCard, Pill, PrimaryButton, Select } from '@/pages/admin/AdminLayout'
-import { JUDGE_ROLES, judgeStatusTone, refereeInitial } from '@/data/adminJudgeMock'
+import { GlassCard, Pill, PrimaryButton } from '@/pages/admin/AdminLayout'
+import { judgeStatusTone, refereeInitial } from '@/data/adminJudgeMock'
 
 export default function AssignedJudgesPanel({
   race,
   assignments,
   refereesById,
   saving = false,
-  onClearAll,
   onRemove,
-  onChangeRole,
   onSubmit,
-  ready,
-  hasChief,
 }) {
   return (
     <GlassCard>
@@ -28,12 +24,7 @@ export default function AssignedJudgesPanel({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Pill tone={judgeStatusTone(race.status)}>{race.status}</Pill>
-          {assignments.length > 0 ? (
-            <GhostButton onClick={onClearAll}>Xóa hết</GhostButton>
-          ) : null}
-        </div>
+        <Pill tone={judgeStatusTone(race.status)}>{race.status}</Pill>
       </div>
 
       <div className="space-y-2 p-5">
@@ -46,22 +37,13 @@ export default function AssignedJudgesPanel({
         {assignments.map((assignment) => {
           const referee = refereesById.get(assignment.refereeId)
           if (!referee) return null
-          const isChief = assignment.role === 'Trọng tài chính'
 
           return (
             <div
               key={assignment.refereeId}
-              className={`flex items-center gap-3 rounded-2xl border p-3 transition-all ${
-                isChief
-                  ? 'border-[#D4A017]/40 bg-gradient-to-r from-[#D4A017]/15 to-transparent'
-                  : 'border-white/10 bg-white/[0.04]'
-              }`}
+              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition-all"
             >
-              <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold ${
-                  isChief ? 'bg-[#D4A017] text-white' : 'bg-white/10 text-white/70'
-                }`}
-              >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 font-bold text-white/70">
                 {refereeInitial(referee.name)}
               </div>
               <div className="min-w-0 flex-1">
@@ -74,17 +56,6 @@ export default function AssignedJudgesPanel({
                   {referee.specialty ? ` · ${referee.specialty}` : ''}
                 </div>
               </div>
-              <Select
-                value={assignment.role}
-                onChange={(event) => onChangeRole(assignment.refereeId, event.target.value)}
-                className="!w-auto text-xs"
-              >
-                {JUDGE_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </Select>
               <button
                 type="button"
                 onClick={() => onRemove(assignment.refereeId)}
@@ -99,7 +70,7 @@ export default function AssignedJudgesPanel({
 
       {assignments.length > 0 ? (
         <div className="flex justify-end p-5 pt-0">
-          <PrimaryButton icon={Send} disabled={!hasChief || saving} onClick={onSubmit}>
+          <PrimaryButton icon={Send} disabled={saving} onClick={onSubmit}>
             {saving ? 'Đang gửi...' : 'Gửi quyết định phân công'}
           </PrimaryButton>
         </div>

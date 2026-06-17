@@ -8,7 +8,7 @@ import { Input, Select, TextArea } from '@/components/ui/Input'
 import { PanelActions, PanelHeader } from '@/components/ui/Panel'
 import { tournamentService, invalidateTournamentListCache } from '@/services/tournamentService'
 import { locationSettingsService } from '@/services/locationSettingsService'
-import { systemSettingsService } from '@/services/systemSettingsService'
+import { fetchDefaultTournamentRules } from '@/services/systemSettingsService'
 import { useApiCacheStore } from '@/store/apiCacheStore'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -154,11 +154,11 @@ export default function SettingsTab({ tournament, setTournament }) {
 
     async function syncDefaultRules() {
       try {
-        const response = await systemSettingsService.getAdminSettings()
+        const rules = await fetchDefaultTournamentRules()
         if (!cancelled) {
-          const rules = response.data.defaultTournamentRules || ''
           setSystemDefaultRules(rules)
           setDraft((previous) => ({ ...previous, rules }))
+          setTournament((previous) => (previous ? { ...previous, rules } : previous))
         }
       } catch {
         // Keep tournament rules if system settings cannot be loaded.
@@ -243,6 +243,7 @@ export default function SettingsTab({ tournament, setTournament }) {
     try {
       setSaving(true)
       let nextTournament = tournament
+      const draftForSave = { ...draft, rules: systemDefaultRules }
 
       const baseChanged =
         draft.name !== tournament.name ||
@@ -257,12 +258,12 @@ export default function SettingsTab({ tournament, setTournament }) {
         Number(draft.maxTeams) !== Number(tournament.maxTeams) ||
         Number(draft.minHorsesPerOwner) !== Number(tournament.minHorsesPerOwner) ||
         Number(draft.maxHorsesPerOwner) !== Number(tournament.maxHorsesPerOwner) ||
-        draft.rules.trim() !== (tournament.rules || '').trim()
+        systemDefaultRules.trim() !== (tournament.rules || '').trim()
 
       if (baseChanged) {
         const response = await tournamentService.updateTournament(
           tournament.id,
-          buildUpdatePayload(tournament, draft),
+          buildUpdatePayload(tournament, draftForSave),
         )
         nextTournament = response.data
       }
@@ -275,8 +276,8 @@ export default function SettingsTab({ tournament, setTournament }) {
         nextTournament = statusResponse.data
       }
 
-      setTournament(nextTournament)
-      setDraft(makeDraft(nextTournament))
+      setTournament({ ...nextTournament, rules: systemDefaultRules })
+      setDraft({ ...makeDraft(nextTournament), rules: systemDefaultRules })
       toast.success('Đã lưu cài đặt giải đấu')
     } catch (error) {
       console.error('Không thể lưu cài đặt giải đấu', error?.response?.data || error)

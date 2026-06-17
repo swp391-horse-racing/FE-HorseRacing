@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { JUDGE_ROLES } from '@/data/adminJudgeMock'
 import { refereeService } from '@/services/refereeService'
 import { publishRaceAssignments } from '@/services/refereeAssignmentService'
 import { getApiErrorMessage } from '@/utils/apiError'
 import AssignedJudgesPanel from './AssignedJudgesPanel'
 import AvailableRefereesPanel from './AvailableRefereesPanel'
+
+const DEFAULT_JUDGE_ROLE = 'Trọng tài chính'
 
 export default function JudgeAssigner({ tournament, race, onChangeJudges }) {
   const assignments = race.judges ?? []
@@ -50,35 +51,19 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges }) {
     [assignments],
   )
 
-  const chiefCount = assignments.filter((item) => item.role === 'Trọng tài chính').length
-  const hasChief = chiefCount > 0
-  const hasDoping = assignments.some((item) => item.role === 'Giám sát doping')
-  const ready =
-    hasChief &&
-    chiefCount <= 1 &&
-    hasDoping &&
-    assignments.length >= 3
-
   const addJudge = (refereeId) => {
     if (assignedIds.has(refereeId)) return
-    const role = hasChief ? 'Trọng tài biên' : 'Trọng tài chính'
-    onChangeJudges([...assignments, { refereeId, role }])
+    onChangeJudges([...assignments, { refereeId, role: DEFAULT_JUDGE_ROLE }])
   }
 
   const removeJudge = (refereeId) => {
     onChangeJudges(assignments.filter((item) => item.refereeId !== refereeId))
   }
 
-  const changeRole = (refereeId, role) => {
-    onChangeJudges(
-      assignments.map((item) => (item.refereeId === refereeId ? { ...item, role } : item)),
-    )
-  }
-
   const submitAssignment = async () => {
-    const chief = assignments.find((item) => item.role === 'Trọng tài chính')
-    if (!chief) {
-      toast.error('Phải có trọng tài chính trước khi gửi phân công')
+    const primary = assignments[0]
+    if (!primary) {
+      toast.error('Phải chọn ít nhất một trọng tài trước khi gửi phân công')
       return
     }
 
@@ -91,7 +76,7 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges }) {
         refereesById,
       })
 
-      await refereeService.assignRaceReferee(race.id, chief.refereeId)
+      await refereeService.assignRaceReferee(race.id, primary.refereeId)
 
       toast.success('Đã gửi phân công trọng tài. Trọng tài có thể xem cuộc đua được giao.')
     } catch (error) {
@@ -108,12 +93,8 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges }) {
         assignments={assignments}
         refereesById={refereesById}
         saving={saving}
-        onClearAll={() => onChangeJudges([])}
         onRemove={removeJudge}
-        onChangeRole={changeRole}
         onSubmit={submitAssignment}
-        ready={ready}
-        hasChief={hasChief}
       />
       <AvailableRefereesPanel
         referees={referees}

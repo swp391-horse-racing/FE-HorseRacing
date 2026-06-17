@@ -169,3 +169,8 @@ export const systemSettingsService = {
     }
   },
 }
+
+export async function fetchDefaultTournamentRules() {
+  const response = await systemSettingsService.getAdminSettings()
+  return response.data.defaultTournamentRules || DEFAULT_TOURNAMENT_RULES
+}

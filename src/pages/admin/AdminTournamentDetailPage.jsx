@@ -15,6 +15,7 @@ import {
 } from '@/components/tournament-detail'
 import { getTotalPrize } from '@/components/tournament-detail/utils'
 import { tournamentService } from '@/services/tournamentService'
+import { fetchDefaultTournamentRules } from '@/services/systemSettingsService'
 import { useApiCacheStore } from '@/store/apiCacheStore'
 
 export default function AdminTournamentDetailPage() {
@@ -83,6 +84,32 @@ export default function AdminTournamentDetailPage() {
       return nextTournament
     })
   }
+
+  useEffect(() => {
+    if (!tournament?.id) return
+
+    let cancelled = false
+
+    async function syncSystemRules() {
+      try {
+        const rules = await fetchDefaultTournamentRules()
+        if (cancelled || !rules) return
+
+        updateTournament((current) => {
+          if (!current || current.rules === rules) return current
+          return { ...current, rules }
+        })
+      } catch {
+        // Keep tournament rules from API if system settings cannot be loaded.
+      }
+    }
+
+    syncSystemRules()
+
+    return () => {
+      cancelled = true
+    }
+  }, [tournament?.id])
 
   const changeTab = (tab) => {
     const next = new URLSearchParams(searchParams)

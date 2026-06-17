@@ -1,11 +1,37 @@
+import { useEffect, useState } from 'react'
 import { Activity, CalendarDays, FileText, Flag, Trophy, Users } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import StatCard from '@/components/ui/StatCard'
 import { SectionHeading } from '@/components/ui/Panel'
 import { formatVnd } from './utils'
 import { formatDisplayDate } from '@/utils/dateFormat'
+import { fetchDefaultTournamentRules } from '@/services/systemSettingsService'
 
 export default function OverviewTab({ tournament, totalPrize, totalRegistered }) {
+  const [rules, setRules] = useState(tournament.rules ?? '')
+  const [loadingRules, setLoadingRules] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadRules() {
+      try {
+        setLoadingRules(true)
+        const systemRules = await fetchDefaultTournamentRules()
+        if (!cancelled) setRules(systemRules)
+      } catch {
+        if (!cancelled) setRules(tournament.rules ?? '')
+      } finally {
+        if (!cancelled) setLoadingRules(false)
+      }
+    }
+
+    loadRules()
+    return () => {
+      cancelled = true
+    }
+  }, [tournament.id, tournament.rules])
+
   return (
     <>
       <div className="mb-9 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -32,8 +58,11 @@ export default function OverviewTab({ tournament, totalPrize, totalRegistered })
         <p className="mb-10 text-lg leading-8 text-white/70">{tournament.description}</p>
         <SectionHeading icon={FileText}>Luật giải đấu</SectionHeading>
         <pre className="whitespace-pre-wrap rounded-3xl border border-white/10 bg-white/[0.035] p-7 font-sans text-lg leading-8 text-white/70">
-          {tournament.rules}
+          {loadingRules ? 'Đang tải luật từ cài đặt hệ thống...' : rules || 'Chưa có luật giải đấu.'}
         </pre>
+        <p className="mt-3 text-xs text-white/45">
+          Đồng bộ từ Admin → Cài đặt → Luật mặc định.
+        </p>
       </Card>
     </>
   )
