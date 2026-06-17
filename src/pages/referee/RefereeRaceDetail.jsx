@@ -560,7 +560,6 @@ function CheckInTab({ raceId }) {
                 <th className="px-4 py-3">Ngựa</th>
                 <th className="px-4 py-3">Chủ ngựa</th>
                 <th className="px-4 py-3">Jockey</th>
-                <th className="px-4 py-3 text-center">Sức khỏe</th>
                 <th className="px-4 py-3 text-center">Cọc</th>
                 <th className="px-4 py-3 text-center">Check-in</th>
                 <th className="px-4 py-3 text-right">Thao tác</th>
@@ -580,9 +579,6 @@ function CheckInTab({ raceId }) {
                   </td>
                   <td className="px-4 py-3 text-sm text-white/70">{h.owner}</td>
                   <td className="px-4 py-3 text-sm text-white/70">{h.jockey}</td>
-                  <td className="px-4 py-3 text-center">
-                    <Pill tone={h.health === 'Hợp lệ' ? 'green' : 'red'}>{h.health}</Pill>
-                  </td>
                   <td className="px-4 py-3 text-center">
                     <Pill tone={h.deposit === 'Đã thanh toán' ? 'green' : 'red'}>{h.deposit}</Pill>
                   </td>
