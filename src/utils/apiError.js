@@ -17,6 +17,10 @@ const API_MESSAGE_VI = {
   'Internal server error': 'Máy chủ đang gặp sự cố. Thử lại sau.',
   'Database operation failed': 'Lỗi cơ sở dữ liệu. Thử lại sau.',
   'User profile request is required': 'Vui lòng nhập thông tin hồ sơ',
+  'Race duration must be at least 45 minutes':
+    'Giờ bắt đầu và giờ kết thúc cuộc đua phải cách nhau ít nhất 45 phút',
+  'Race venue is already booked for an overlapping race':
+    'Địa điểm đua đã có cuộc đua trùng khung giờ',
 }
 
 function isLoginRequest(error) {

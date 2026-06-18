@@ -96,6 +96,7 @@ function mapRace(race, index) {
     description: race?.note ?? '',
     date: toDate(scheduledStartAt),
     time: toTime(scheduledStartAt),
+    endTime: toTime(scheduledEndAt),
     distance: race?.distance ?? '',
     venueId: race?.venueId == null ? '' : String(race.venueId),
     venueName: race?.venueName ?? '',
@@ -162,6 +163,7 @@ function racePrizeRequests(race) {
 function raceRequest(race) {
   const date = race.date || new Date().toISOString().slice(0, 10)
   const time = race.time || '08:00'
+  const endTime = race.endTime || ''
   const minParticipants = Math.max(1, Number(race.minHorses || 1))
   const maxParticipants = Math.max(minParticipants, Number(race.maxHorses || minParticipants))
 
@@ -170,7 +172,7 @@ function raceRequest(race) {
     distance: race.distance || '1000m',
     venueId: race.venueId ? Number(race.venueId) : null,
     scheduledStartAt: dateTime(date, time),
-    scheduledEndAt: addOneHourDateTime(date, time),
+    scheduledEndAt: endTime ? dateTime(date, endTime) : addOneHourDateTime(date, time),
     minParticipants,
     maxParticipants,
     entryFee: Math.max(0, Number(race.entryFee || 0)),
