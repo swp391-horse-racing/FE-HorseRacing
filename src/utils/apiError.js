@@ -45,7 +45,7 @@ export function getApiErrorMessage(error, options = {}) {
   const loginFlow = options.scene === 'login' || isLoginRequest(error)
 
   if (!error?.response) {
-    if (loginFlow) return 'Không kết nối được máy chủ. Kiểm tra backend đang chạy (port 8080).'
+    if (loginFlow) return 'Không kết nối được máy chủ. Kiểm tra lại kết nối đến API.'
     return 'Không kết nối được máy chủ'
   }
 

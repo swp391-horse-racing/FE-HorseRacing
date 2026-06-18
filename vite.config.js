@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const API_ORIGIN = 'https://api.horseracing.id.vn'
 
 /** Copy logo từ src/assets → public để index.html dùng favicon & splash */
 function syncLogoToPublic() {
@@ -47,7 +48,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: API_ORIGIN,
         changeOrigin: true,
       },
     },
