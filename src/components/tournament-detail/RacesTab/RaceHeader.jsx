@@ -19,9 +19,10 @@ export default function RaceHeader({
   onRemove,
 }) {
   const displayName = race.name?.trim() || "Cuộc đua mới";
+  const timeRange = `${race.time || "--:--"} - ${race.endTime || "--:--"}`;
   const scheduleParts = [
     formatDisplayDate(race.date, "Chưa chọn ngày"),
-    race.time || "--:--",
+    timeRange,
     formatDistance(race.distance) || "Chưa nhập cự ly",
   ];
 

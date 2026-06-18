@@ -24,6 +24,19 @@ export function shiftTime(time, hours) {
   return `${String(nextHour).padStart(2, "0")}:${String(Number(minute)).padStart(2, "0")}`;
 }
 
+export function shiftTimeByMinutes(time, minutes) {
+  if (!time) return "";
+
+  const [hour = "00", minute = "00"] = String(time).split(":");
+  const totalMinutes = Math.max(
+    0,
+    Math.min(23 * 60 + 59, Number(hour) * 60 + Number(minute) + minutes),
+  );
+  const nextHour = Math.floor(totalMinutes / 60);
+  const nextMinute = totalMinutes % 60;
+  return `${String(nextHour).padStart(2, "0")}:${String(nextMinute).padStart(2, "0")}`;
+}
+
 export function clampDate(date, min, max) {
   if (!date) return "";
   if (min && date < min) return min;
@@ -80,11 +93,6 @@ function toDateTimeValue(date, time = "08:00") {
   return `${date}T${time || "08:00"}`;
 }
 
-function addOneHourDateTimeValue(date, time = "08:00") {
-  if (!date) return "";
-  return toDateTimeValue(date, shiftTime(time || "08:00", 1));
-}
-
 export function buildDefaultRace(
   tournament,
   no,
@@ -95,6 +103,7 @@ export function buildDefaultRace(
   const defaultVenue = venues[0];
   const defaultDistance = distanceOptions[0]?.value || "1000m";
   const fee = Number(defaultRegistrationFee) || 0;
+  const startTime = tournament.startTime || "08:00";
 
   return {
     id: `${tournament.id}-draft-${Date.now()}-${no}`,
@@ -102,7 +111,8 @@ export function buildDefaultRace(
     name: `Cuộc đua ${no}`,
     description: "",
     date: tournament.startDate || "",
-    time: tournament.startTime || "08:00",
+    time: startTime,
+    endTime: shiftTime(startTime, 1),
     distance: defaultDistance,
     venueId: defaultVenue?.id || "",
     venueName: defaultVenue?.name || "",
@@ -153,52 +163,54 @@ export function applyOptionDefaults(
   if (!next.date && race.date === "") {
     // keep empty if tournament has no start date
   }
+  if (!Object.prototype.hasOwnProperty.call(next, "endTime") && next.time) {
+    next.endTime = shiftTime(next.time, 1);
+  }
   if (!next.minHorses) next.minHorses = 8;
   if (!next.maxHorses) next.maxHorses = 12;
   return next;
 }
 
-const RACE_DURATION_MINUTES = 60;
-const MIN_RACE_GAP_MINUTES = 45;
+const MIN_RACE_DURATION_MINUTES = 45;
 
 function timeToMinutes(time) {
   const [hour = "0", minute = "0"] = String(time || "00:00").split(":");
   return Number(hour) * 60 + Number(minute);
 }
 
-function getRaceIntervalMinutes(race) {
-  const start = timeToMinutes(race.time);
-  return { start, end: start + RACE_DURATION_MINUTES };
+function getRaceEndTime(race) {
+  return Object.prototype.hasOwnProperty.call(race, "endTime")
+    ? race.endTime
+    : shiftTime(race.time, 1);
 }
 
-function getSameDayScheduleError(firstRace, secondRace) {
-  if (!firstRace?.date || !secondRace?.date || firstRace.date !== secondRace.date) {
-    return "";
-  }
-  if (!firstRace?.time || !secondRace?.time) return "";
+function getRaceInterval(race) {
+  const endTime = getRaceEndTime(race);
 
-  const first = getRaceIntervalMinutes(firstRace);
-  const second = getRaceIntervalMinutes(secondRace);
+  return {
+    startValue: toDateTimeValue(race.date, race.time),
+    endValue: toDateTimeValue(race.date, endTime),
+  };
+}
 
-  if (first.start === second.start) {
-    return "Không được có hai cuộc đua cùng ngày và cùng giờ thi đấu";
-  }
+function hasScheduleOverlap(firstRace, secondRace) {
+  if (!firstRace?.date || !secondRace?.date) return false;
+  if (!firstRace?.time || !secondRace?.time) return false;
+  if (!getRaceEndTime(firstRace) || !getRaceEndTime(secondRace)) return false;
+  if (String(firstRace.venueId) !== String(secondRace.venueId)) return false;
 
-  const earlier = first.start <= second.start ? first : second;
-  const later = first.start <= second.start ? second : first;
+  const first = getRaceInterval(firstRace);
+  const second = getRaceInterval(secondRace);
 
-  if (later.start < earlier.end + MIN_RACE_GAP_MINUTES) {
-    return `Các cuộc đua trong cùng ngày phải cách nhau ít nhất ${MIN_RACE_GAP_MINUTES} phút`;
-  }
-
-  return "";
+  return first.startValue < second.endValue && first.endValue > second.startValue;
 }
 
 function getRaceScheduleConflictError(races) {
   for (let index = 0; index < races.length; index += 1) {
     for (let compareIndex = index + 1; compareIndex < races.length; compareIndex += 1) {
-      const conflict = getSameDayScheduleError(races[index], races[compareIndex]);
-      if (conflict) return conflict;
+      if (hasScheduleOverlap(races[index], races[compareIndex])) {
+        return "Địa điểm đua đã có cuộc đua trùng khung giờ";
+      }
     }
   }
   return "";
@@ -218,8 +230,9 @@ export function getRaceValidationError(races, tournament) {
   for (const race of races) {
     const raceName = race.name?.trim();
     const raceDistance = race.distance?.trim();
+    const raceEndTime = getRaceEndTime(race);
     const raceStart = toDateTimeValue(race.date, race.time);
-    const raceEnd = addOneHourDateTimeValue(race.date, race.time);
+    const raceEnd = toDateTimeValue(race.date, raceEndTime);
     const raceKey = `${raceName?.toLowerCase()}|${raceStart}`;
     const prizeRanks = new Set();
 
@@ -232,8 +245,12 @@ export function getRaceValidationError(races, tournament) {
     if (!race.venueId) return "Vui lòng chọn địa điểm đua";
     if ((race.description || "").length > 1000)
       return "Mô tả cuộc đua tối đa 1000 ký tự";
-    if (!race.date || !race.time)
-      return "Ngày và giờ thi đấu không được để trống";
+    if (!race.date || !race.time || !raceEndTime)
+      return "Ngày, giờ bắt đầu và giờ kết thúc không được để trống";
+    if (raceEnd <= raceStart)
+      return "Giờ kết thúc cuộc đua phải sau giờ bắt đầu";
+    if (timeToMinutes(raceEndTime) - timeToMinutes(race.time) < MIN_RACE_DURATION_MINUTES)
+      return `Giờ bắt đầu và giờ kết thúc phải cách nhau ít nhất ${MIN_RACE_DURATION_MINUTES} phút`;
     if (raceStart < tournamentStart || raceEnd > tournamentEnd)
       return "Lịch thi đấu phải nằm trong thời gian mùa giải";
     if (Number(race.minHorses) <= 0 || Number(race.maxHorses) <= 0)

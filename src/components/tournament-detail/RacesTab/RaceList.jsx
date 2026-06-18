@@ -29,9 +29,10 @@ export default function RaceList({ races, selectedId, onAdd, onSelect }) {
       <div className="space-y-3">
         {races.map((race) => {
           const displayName = race.name?.trim() || "Cuộc đua mới";
+          const timeRange = `${race.time || "--:--"} - ${race.endTime || "--:--"}`;
           const scheduleText =
-            race.date || race.time
-              ? `${formatDisplayDate(race.date, "Chưa chọn ngày")} · ${race.time || "--:--"}`
+            race.date || race.time || race.endTime
+              ? `${formatDisplayDate(race.date, "Chưa chọn ngày")} · ${timeRange}`
               : "Chưa cấu hình lịch";
           const maxHorses = Number(race.maxHorses || 0);
           const registered = Number(race.registered || 0);

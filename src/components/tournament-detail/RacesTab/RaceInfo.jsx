@@ -10,6 +10,7 @@ import {
   clampTime,
   getEffectiveProvinceId,
   shiftTime,
+  shiftTimeByMinutes,
 } from "./helpers";
 import { formatDisplayDate } from "@/utils/dateFormat";
 import {
@@ -31,7 +32,13 @@ export default function RaceInfo({
   const [draft, setDraft] = useState(race);
 
   useEffect(() => {
-    setDraft(race);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setDraft(race);
+    });
+    return () => {
+      active = false;
+    };
   }, [race]);
 
   const updateDraft = (patch) => {
@@ -47,7 +54,12 @@ export default function RaceInfo({
       : undefined;
   const raceTimeMax =
     draft.date === tournament.endDate
-      ? shiftTime(tournament.endTime, -1) || undefined
+      ? shiftTimeByMinutes(tournament.endTime, -45) || undefined
+      : undefined;
+  const raceEndTimeMin = shiftTimeByMinutes(draft.time, 45) || undefined;
+  const raceEndTimeMax =
+    draft.date === tournament.endDate
+      ? tournament.endTime || undefined
       : undefined;
   const distanceIsConfigured = distanceOptions.some(
     (option) => option.value === draft.distance,
@@ -115,12 +127,20 @@ export default function RaceInfo({
                 date === tournament.startDate ? tournament.startTime : "";
               const nextRaceTimeMax =
                 date === tournament.endDate
-                  ? shiftTime(tournament.endTime, -1)
+                  ? shiftTimeByMinutes(tournament.endTime, -45)
                   : "";
+              const nextTime = clampTime(draft.time, nextRaceTimeMin, nextRaceTimeMax);
+              const nextEndTimeMin = shiftTimeByMinutes(nextTime, 45);
+              const nextEndTimeMax = date === tournament.endDate ? tournament.endTime : "";
 
               updateDraft({
                 date,
-                time: clampTime(draft.time, nextRaceTimeMin, nextRaceTimeMax),
+                time: nextTime,
+                endTime: clampTime(
+                  draft.endTime || shiftTime(nextTime, 1),
+                  nextEndTimeMin,
+                  nextEndTimeMax,
+                ),
               });
             }}
           />
@@ -129,27 +149,54 @@ export default function RaceInfo({
             {formatDisplayDate(tournament.endDate)}.
           </p>
         </Field>
-        <Field label="Giờ thi đấu">
+        <Field label="Giờ bắt đầu">
           <Input
             type="time"
             min={raceTimeMin}
             max={raceTimeMax}
             value={draft.time}
             disabled={saving}
-            onChange={(event) =>
+            onChange={(event) => {
+              const nextTime = clampTime(event.target.value, raceTimeMin, raceTimeMax);
+              const nextEndTimeMin = shiftTimeByMinutes(nextTime, 45);
               updateDraft({
-                time: clampTime(event.target.value, raceTimeMin, raceTimeMax),
-              })
-            }
+                time: nextTime,
+                endTime: clampTime(
+                  draft.endTime || shiftTime(nextTime, 1),
+                  nextEndTimeMin,
+                  raceEndTimeMax,
+                ),
+              });
+            }}
           />
           {(raceTimeMin || raceTimeMax) && (
             <p className="mt-2 text-xs text-white/40">
-              Giờ thi đấu trong ngày này: {raceTimeMin || "00:00"} -{" "}
+              Giờ bắt đầu trong ngày này: {raceTimeMin || "00:00"} -{" "}
               {raceTimeMax || "23:59"}.
             </p>
           )}
+        </Field>
+        <Field label="Giờ kết thúc">
+          <Input
+            type="time"
+            min={raceEndTimeMin}
+            max={raceEndTimeMax}
+            value={draft.endTime || ""}
+            disabled={saving}
+            onChange={(event) =>
+              updateDraft({
+                endTime: clampTime(event.target.value, raceEndTimeMin, raceEndTimeMax),
+              })
+            }
+          />
+          {(raceEndTimeMin || raceEndTimeMax) && (
+            <p className="mt-2 text-xs text-white/40">
+              Giờ kết thúc trong ngày này: {raceEndTimeMin || "00:00"} -{" "}
+              {raceEndTimeMax || "23:59"}.
+            </p>
+          )}
           <p className="mt-2 text-xs text-white/40">
-            Các cuộc đua cùng ngày phải cách nhau ít nhất 45 phút và không trùng giờ.
+            Giờ bắt đầu và giờ kết thúc phải cách nhau ít nhất 45 phút. Các cuộc đua cùng địa điểm không được trùng khung giờ.
           </p>
         </Field>
         <Field label="Khoảng cách">
