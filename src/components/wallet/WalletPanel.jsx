@@ -3,7 +3,6 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   ExternalLink,
-  Smartphone,
   Wallet,
   Eye,
   EyeOff,
@@ -25,21 +24,21 @@ const PRESETS = [100_000, 500_000, 1_000_000, 5_000_000, 10_000_000]
 const PROVIDER = 'ZALOPAY'
 
 const TX_LABELS = {
-  DEPOSIT: { label: 'Nạp tiền', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  WITHDRAW: { label: 'Rút tiền', color: 'text-red-600', bg: 'bg-red-50' },
-  ADMIN_WITHDRAW: { label: 'Rút quỹ', color: 'text-red-600', bg: 'bg-red-50' },
-  ENTRY_FEE: { label: 'Phí đăng ký', color: 'text-orange-600', bg: 'bg-orange-50' },
-  LATE_CHECK_IN_FEE: { label: 'Phí check-in muộn', color: 'text-orange-600', bg: 'bg-orange-50' },
-  JOCKEY_HIRE: { label: 'Thuê jockey', color: 'text-orange-600', bg: 'bg-orange-50' },
-  JOCKEY_PAYOUT: { label: 'Thanh toán jockey', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  JOCKEY_HIRE_TAX: { label: 'Thuế thuê jockey', color: 'text-orange-600', bg: 'bg-orange-50' },
-  BET_STAKE: { label: 'Tiền cược', color: 'text-orange-600', bg: 'bg-orange-50' },
-  BET_PAYOUT: { label: 'Thưởng cược', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  PRIZE_PAYOUT: { label: 'Tiền thưởng', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  ITEM_PURCHASE: { label: 'Mua vật phẩm', color: 'text-orange-600', bg: 'bg-orange-50' },
-  ITEM_SALE: { label: 'Bán vật phẩm', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  REFUND: { label: 'Hoàn tiền', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  ADJUSTMENT: { label: 'Điều chỉnh', color: 'text-[#1E3A5F]', bg: 'bg-gray-50' },
+  DEPOSIT: { label: 'Nạp tiền', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
+  WITHDRAW: { label: 'Rút tiền', color: 'text-rose-300', bg: 'bg-rose-500/15' },
+  ADMIN_WITHDRAW: { label: 'Rút quỹ', color: 'text-rose-300', bg: 'bg-rose-500/15' },
+  ENTRY_FEE: { label: 'Phí đăng ký', color: 'text-amber-300', bg: 'bg-amber-500/15' },
+  LATE_CHECK_IN_FEE: { label: 'Phí check-in muộn', color: 'text-amber-300', bg: 'bg-amber-500/15' },
+  JOCKEY_HIRE: { label: 'Thuê jockey', color: 'text-amber-300', bg: 'bg-amber-500/15' },
+  JOCKEY_PAYOUT: { label: 'Thanh toán jockey', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
+  JOCKEY_HIRE_TAX: { label: 'Thuế thuê jockey', color: 'text-amber-300', bg: 'bg-amber-500/15' },
+  BET_STAKE: { label: 'Tiền cược', color: 'text-amber-300', bg: 'bg-amber-500/15' },
+  BET_PAYOUT: { label: 'Thưởng cược', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
+  PRIZE_PAYOUT: { label: 'Tiền thưởng', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
+  ITEM_PURCHASE: { label: 'Mua vật phẩm', color: 'text-amber-300', bg: 'bg-amber-500/15' },
+  ITEM_SALE: { label: 'Bán vật phẩm', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
+  REFUND: { label: 'Hoàn tiền', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
+  ADJUSTMENT: { label: 'Điều chỉnh', color: 'text-sky-300', bg: 'bg-sky-500/15' },
 }
 
 const TX_ICONS = {
@@ -131,11 +130,11 @@ function transactionDescription(tx) {
 }
 
 function statusTone(status) {
-  if (status === 'SUCCESS' || status === 'ACTIVE' || status === 'PAID') return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-  if (status === 'PENDING') return 'bg-amber-50 text-amber-700 border border-amber-200'
-  if (status === 'FAILED' || status === 'REVERSED' || status === 'SUSPENDED') return 'bg-red-50 text-red-700 border border-red-200'
-  if (status === 'EXPIRED' || status === 'CANCELLED') return 'bg-gray-100 text-gray-700 border border-gray-200'
-  return 'bg-gray-100 text-gray-700 border border-gray-200'
+  if (status === 'SUCCESS' || status === 'ACTIVE' || status === 'PAID') return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+  if (status === 'PENDING') return 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+  if (status === 'FAILED' || status === 'REVERSED' || status === 'SUSPENDED') return 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+  if (status === 'EXPIRED' || status === 'CANCELLED') return 'bg-white/10 text-white/60 border border-white/15'
+  return 'bg-white/10 text-white/60 border border-white/15'
 }
 
 function statusIcon(status) {
@@ -207,144 +206,77 @@ function numberToWords(number) {
   return result.replace(/\s+/g, ' ')
 }
 
-function getWalletUi(isAdmin) {
-  if (isAdmin) {
-    return {
-      root: 'space-y-6 w-full',
-      card: 'rounded-3xl border border-white/10 bg-white/[0.045]',
-      cardPad: 'p-6 md:p-8',
-      cardPadSm: 'p-6',
-      segmentTrack: 'relative flex p-1 bg-white/[0.045] border border-white/10 rounded-2xl',
-      segmentThumb:
-        'absolute top-1 bottom-1 left-1 rounded-xl bg-[#dda50e] ring-1 ring-[#f0c14b]/35 shadow-lg shadow-[#dda50e]/20 transition-all duration-300 ease-out',
-      tabActive: 'text-white',
-      tabInactive: 'text-white/60 hover:bg-white/5 hover:text-white',
-      tabIconDepositActive: 'text-white scale-110',
-      tabIconDepositInactive: 'text-white/40 group-hover:text-white/70',
-      tabIconWithdrawActive: 'text-white scale-110',
-      tabIconWithdrawInactive: 'text-white/40 group-hover:text-white/70',
-      label: 'block text-sm font-bold text-white/80',
-      presetActive: 'bg-[#D4A017]/15 border-2 border-[#D4A017] text-[#D4A017]',
-      presetInactive: 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20',
-      currencyPrefix: 'text-white/40 font-bold text-lg',
-      amountInput:
-        'w-full pl-9.5 pr-16 py-4 bg-white/5 border border-white/10 rounded-2xl focus:outline-none focus:bg-white/[0.08] focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all font-bold text-lg text-white placeholder:text-white/30 placeholder:font-normal',
-      currencySuffix: 'text-white/40 text-xs font-bold',
-      wordsBox: 'rounded-xl bg-white/5 px-4 py-2.5 border border-white/10',
-      wordsText: 'text-xs text-white/55 leading-relaxed',
-      wordsHighlight: 'font-semibold text-[#D4A017]',
-      sectionTitle: 'text-sm font-bold text-white/80',
-      bankPanel: 'bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4',
-      bankTitle: 'text-sm font-bold text-white/80 flex items-center gap-2 border-b border-white/10 pb-3',
-      bankTitleIcon: 'w-4.5 h-4.5 text-white/45',
-      fieldLabel: 'text-sm font-semibold text-white/70 mb-1.5',
-      input:
-        'w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all text-white placeholder:text-white/30 placeholder:font-normal text-sm font-semibold',
-      inputUpper:
-        'w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all text-white uppercase placeholder:text-white/30 placeholder:font-normal text-sm font-bold',
-      btnDisabled: 'bg-white/5 text-white/30 cursor-not-allowed shadow-none border border-white/10',
-      ticket: 'mt-6 rounded-2xl border border-dashed border-[#D4A017]/50 bg-[#D4A017]/10 p-6 relative overflow-hidden',
-      ticketPunchL:
-        'absolute top-1/2 -left-3 w-6 h-6 rounded-full bg-[#0A1628] border-r border-[#D4A017]/30 transform -translate-y-1/2',
-      ticketPunchR:
-        'absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-[#0A1628] border-l border-[#D4A017]/30 transform -translate-y-1/2',
-      ticketHeader:
-        'flex items-center gap-2 text-white font-extrabold text-sm mb-4 pb-4 border-b border-dashed border-white/15',
-      ticketLabel: 'text-white/50 text-xs font-semibold',
-      ticketValue: 'font-bold text-white',
-      ticketMono: 'font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded text-xs select-all w-fit',
-      historyHeading: 'text-base font-extrabold text-white flex items-center gap-2',
-      historyIcon: 'w-5 h-5 text-white/45',
-      historySub: 'text-xs text-white/55',
-      filterActive: 'bg-[#D4A017]/20 text-[#D4A017] border border-[#D4A017]/30',
-      filterInactive: 'bg-white/5 text-white/55 border border-white/10 hover:bg-white/10 hover:text-white/80',
-      loadingWrap: 'flex flex-col items-center justify-center py-20 text-white/45 space-y-2',
-      emptyWrap: 'flex flex-col items-center justify-center py-20 text-white/45 text-center space-y-3',
-      emptyIconWrap: 'p-4 rounded-full bg-white/5 border border-white/10',
-      emptyIcon: 'w-8 h-8 opacity-40 text-white/50',
-      emptyTitle: 'text-xs font-bold text-white/70',
-      emptyDesc: 'text-[11px] text-white/45 max-w-[180px] mx-auto',
-      txRow:
-        'p-3.5 rounded-2xl hover:bg-white/[0.04] border border-white/10 hover:border-white/20 transition-all flex flex-col gap-2',
-      txIconBorder: 'border border-white/10',
-      txTitle: 'text-xs font-bold text-white truncate',
-      txMeta: 'text-[10px] text-white/50 font-semibold mt-0.5',
-      txFooter:
-        'pt-2 border-t border-white/10 flex items-center justify-between text-[9px] text-white/40 font-semibold',
-      txRef: 'text-[9px] text-white/45 bg-white/5 px-2 py-1 rounded-md w-fit flex items-center gap-1.5 font-mono leading-none',
-      txRefId: 'font-bold text-white/55',
-      methodName: 'font-bold text-white text-sm',
-      methodDesc: 'text-xs text-white/55',
-    }
-  }
-
-  return {
-    root: 'space-y-6 max-w-5xl mx-auto',
-    card: 'bg-white rounded-3xl border border-slate-100 shadow-sm',
-    cardPad: 'p-6 md:p-8',
-    cardPadSm: 'p-6',
-    segmentTrack: 'relative flex p-1 bg-slate-100 rounded-2xl',
-    segmentThumb:
-      'absolute top-1 bottom-1 left-1 rounded-xl bg-[#dda50e] ring-1 ring-[#f0c14b]/35 shadow-lg shadow-[#dda50e]/15 transition-all duration-300 ease-out',
-    tabActive: 'text-white',
-    tabInactive: 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800',
-    tabIconDepositActive: 'text-white scale-110 group-hover:text-white',
-    tabIconDepositInactive: 'text-slate-400 group-hover:text-slate-600',
-    tabIconWithdrawActive: 'text-white scale-110 group-hover:text-white',
-    tabIconWithdrawInactive: 'text-slate-400 group-hover:text-slate-600',
-    label: 'block text-sm font-bold text-slate-700',
-    presetActive: 'bg-amber-500/5 border-2 border-[#D4A017] text-[#1E3A5F]',
-    presetInactive: 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300',
-    currencyPrefix: 'text-slate-400 font-bold text-lg',
-    amountInput:
-      'w-full pl-9.5 pr-16 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:bg-white focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all font-bold text-lg text-slate-800 placeholder:text-slate-400 placeholder:font-normal',
-    currencySuffix: 'text-slate-400 text-xs font-bold',
-    wordsBox: 'rounded-xl bg-slate-50 px-4 py-2.5 border border-slate-100',
-    wordsText: 'text-xs text-slate-500 leading-relaxed',
-    wordsHighlight: 'font-semibold text-[#1E3A5F]',
-    sectionTitle: 'text-sm font-bold text-slate-700',
-    bankPanel: 'bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-4',
-    bankTitle: 'text-sm font-bold text-slate-700 flex items-center gap-2 border-b border-slate-200/60 pb-3',
-    bankTitleIcon: 'w-4.5 h-4.5 text-slate-500',
-    fieldLabel: 'text-sm font-semibold text-slate-700 mb-1.5',
-    input:
-      'w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all text-slate-800 placeholder:text-slate-400 placeholder:font-normal text-sm font-semibold',
-    inputUpper:
-      'w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all text-slate-800 uppercase placeholder:text-slate-400 placeholder:font-normal text-sm font-bold',
-    btnDisabled: 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none border border-slate-100',
-    ticket: 'mt-6 rounded-2xl border border-dashed border-[#D4A017]/50 bg-amber-500/5 p-6 relative overflow-hidden',
-    ticketPunchL:
-      'absolute top-1/2 -left-3 w-6 h-6 rounded-full bg-white border-r border-[#D4A017]/30 transform -translate-y-1/2',
-    ticketPunchR:
-      'absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-white border-l border-[#D4A017]/30 transform -translate-y-1/2',
-    ticketHeader:
-      'flex items-center gap-2 text-[#1E3A5F] font-extrabold text-sm mb-4 pb-4 border-b border-dashed border-slate-200',
-    ticketLabel: 'text-slate-500 text-xs font-semibold',
-    ticketValue: 'font-bold text-slate-800',
-    ticketMono: 'font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-xs select-all w-fit',
-    historyHeading: 'text-base font-extrabold text-[#1E3A5F] flex items-center gap-2',
-    historyIcon: 'w-5 h-5 text-slate-500',
-    historySub: 'text-xs text-slate-500',
-    filterActive: 'bg-[#1E3A5F] text-white',
-    filterInactive: 'bg-slate-50 text-slate-500 border border-slate-200/60 hover:bg-slate-100 hover:text-slate-800',
-    loadingWrap: 'flex flex-col items-center justify-center py-20 text-slate-400 space-y-2',
-    emptyWrap: 'flex flex-col items-center justify-center py-20 text-slate-400 text-center space-y-3',
-    emptyIconWrap: 'p-4 rounded-full bg-slate-50 border border-slate-100',
-    emptyIcon: 'w-8 h-8 opacity-40 text-slate-500',
-    emptyTitle: 'text-xs font-bold text-slate-600',
-    emptyDesc: 'text-[11px] text-slate-400 max-w-[180px] mx-auto',
-    txRow:
-      'p-3.5 rounded-2xl hover:bg-slate-50 border border-slate-100 hover:border-slate-200/80 transition-all flex flex-col gap-2',
-    txIconBorder: 'border border-slate-100/50',
-    txTitle: 'text-xs font-bold text-slate-800 truncate',
-    txMeta: 'text-[10px] text-slate-500 font-semibold mt-0.5',
-    txFooter:
-      'pt-2 border-t border-slate-100/60 flex items-center justify-between text-[9px] text-slate-400 font-semibold',
-    txRef: 'text-[9px] text-slate-350 bg-slate-50 px-2 py-1 rounded-md w-fit flex items-center gap-1.5 font-mono leading-none',
-    txRefId: 'font-bold text-slate-500',
-    methodName: 'font-bold text-slate-800 text-sm',
-    methodDesc: 'text-xs text-slate-500',
-  }
+const WALLET_UI = {
+  root: 'space-y-6 w-full',
+  card: 'rounded-3xl border border-white/10 bg-white/[0.045]',
+  cardPad: 'p-6 md:p-8',
+  cardPadSm: 'p-6',
+  segmentTrack: 'relative flex p-1 bg-white/[0.045] border border-white/10 rounded-2xl',
+  segmentThumb:
+    'absolute top-1 bottom-1 left-1 rounded-xl bg-[#dda50e] ring-1 ring-[#f0c14b]/35 shadow-lg shadow-[#dda50e]/20 transition-all duration-300 ease-out',
+  tabActive: 'text-white',
+  tabInactive: 'text-white/60 hover:bg-white/5 hover:text-white',
+  tabIconDepositActive: 'text-white scale-110',
+  tabIconDepositInactive: 'text-white/40 group-hover:text-white/70',
+  tabIconWithdrawActive: 'text-white scale-110',
+  tabIconWithdrawInactive: 'text-white/40 group-hover:text-white/70',
+  label: 'block text-sm font-bold text-white/80',
+  presetActive: 'bg-[#D4A017]/15 border-2 border-[#D4A017] text-[#D4A017]',
+  presetInactive: 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20',
+  currencyPrefix: 'text-white/40 font-bold text-lg',
+  amountInput:
+    'w-full pl-9.5 pr-16 py-4 bg-white/5 border border-white/10 rounded-2xl focus:outline-none focus:bg-white/[0.08] focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all font-bold text-lg text-white placeholder:text-white/30 placeholder:font-normal',
+  currencySuffix: 'text-white/40 text-xs font-bold',
+  wordsBox: 'rounded-xl bg-white/5 px-4 py-2.5 border border-white/10',
+  wordsText: 'text-xs text-white/55 leading-relaxed',
+  wordsHighlight: 'font-semibold text-[#D4A017]',
+  sectionTitle: 'text-sm font-bold text-white/80',
+  bankPanel: 'bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4',
+  bankTitle: 'text-sm font-bold text-white/80 flex items-center gap-2 border-b border-white/10 pb-3',
+  bankTitleIcon: 'w-4.5 h-4.5 text-white/45',
+  fieldLabel: 'text-sm font-semibold text-white/70 mb-1.5',
+  input:
+    'w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all text-white placeholder:text-white/30 placeholder:font-normal text-sm font-semibold',
+  inputUpper:
+    'w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all text-white uppercase placeholder:text-white/30 placeholder:font-normal text-sm font-bold',
+  btnDisabled: 'bg-white/5 text-white/30 cursor-not-allowed shadow-none border border-white/10',
+  ticket: 'mt-6 rounded-2xl border border-dashed border-[#D4A017]/50 bg-[#D4A017]/10 p-6 relative overflow-hidden',
+  ticketPunchL:
+    'absolute top-1/2 -left-3 w-6 h-6 rounded-full bg-[#0A1628] border-r border-[#D4A017]/30 transform -translate-y-1/2',
+  ticketPunchR:
+    'absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-[#0A1628] border-l border-[#D4A017]/30 transform -translate-y-1/2',
+  ticketHeader:
+    'flex items-center gap-2 text-white font-extrabold text-sm mb-4 pb-4 border-b border-dashed border-white/15',
+  ticketLabel: 'text-white/50 text-xs font-semibold',
+  ticketValue: 'font-bold text-white',
+  ticketMono: 'font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded text-xs select-all w-fit',
+  historyHeading: 'text-base font-extrabold text-white flex items-center gap-2',
+  historyIcon: 'w-5 h-5 text-white/45',
+  historySub: 'text-xs text-white/55',
+  filterActive: 'bg-[#D4A017]/20 text-[#D4A017] border border-[#D4A017]/30',
+  filterInactive: 'bg-white/5 text-white/55 border border-white/10 hover:bg-white/10 hover:text-white/80',
+  loadingWrap: 'flex flex-col items-center justify-center py-20 text-white/45 space-y-2',
+  emptyWrap: 'flex flex-col items-center justify-center py-20 text-white/45 text-center space-y-3',
+  emptyIconWrap: 'p-4 rounded-full bg-white/5 border border-white/10',
+  emptyIcon: 'w-8 h-8 opacity-40 text-white/50',
+  emptyTitle: 'text-xs font-bold text-white/70',
+  emptyDesc: 'text-[11px] text-white/45 max-w-[180px] mx-auto',
+  txRow:
+    'p-3.5 rounded-2xl hover:bg-white/[0.04] border border-white/10 hover:border-white/20 transition-all flex flex-col gap-2',
+  txIconBorder: 'border border-white/10',
+  txTitle: 'text-xs font-bold text-white truncate',
+  txMeta: 'text-[10px] text-white/50 font-semibold mt-0.5',
+  txFooter:
+    'pt-2 border-t border-white/10 flex items-center justify-between text-[9px] text-white/40 font-semibold',
+  txRef: 'text-[9px] text-white/45 bg-white/5 px-2 py-1 rounded-md w-fit flex items-center gap-1.5 font-mono leading-none',
+  txRefId: 'font-bold text-white/55',
+  methodName: 'font-bold text-white text-sm',
+  methodDesc: 'text-xs text-white/55',
+  methodBadge: 'px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-black tracking-wide uppercase shrink-0',
+  amountCredit: 'text-emerald-400',
+  amountDebit: 'text-rose-400',
+  holdText: 'text-amber-300',
+  spinner: 'border-white/20 border-t-[#D4A017]',
 }
 
 function Field({ label, required, children, labelClassName = 'text-sm font-semibold text-slate-700 mb-1.5' }) {
@@ -368,7 +300,7 @@ export default function WalletPanel({
   quickActions,
 }) {
   const isAdminWallet = walletMode === 'admin'
-  const ui = getWalletUi(isAdminWallet)
+  const ui = WALLET_UI
   const depositPollRef = useRef(null)
   const [wallet, setWallet] = useState(null)
   const [transactions, setTransactions] = useState([])
@@ -803,7 +735,7 @@ export default function WalletPanel({
                     <div className={ui.methodDesc}>Thanh toán trực tiếp, giao dịch hoàn thành tức thì</div>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black tracking-wide uppercase shrink-0">
+                <span className={ui.methodBadge}>
                   Nhanh gọn
                 </span>
               </div>
@@ -985,7 +917,7 @@ export default function WalletPanel({
           <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin pr-1 max-h-[550px]">
             {loadingData ? (
               <div className={ui.loadingWrap}>
-                <div className="w-8 h-8 border-3 border-[#1E3A5F] border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-3 border-white/20 border-t-[#D4A017] rounded-full animate-spin"></div>
                 <span className="text-xs font-medium">Đang tải lịch sử...</span>
               </div>
             ) : filteredTransactions.length === 0 ? (
@@ -1003,8 +935,8 @@ export default function WalletPanel({
                 {filteredTransactions.map((tx) => {
                   const cfg = TX_LABELS[tx.type] || {
                     label: tx.type,
-                    color: 'text-slate-600',
-                    bg: 'bg-slate-50',
+                    color: 'text-white/70',
+                    bg: 'bg-white/10',
                   }
 
                   // Dynamically resolve custom lucide icon
@@ -1033,7 +965,7 @@ export default function WalletPanel({
 
                         {/* Amount & Status info */}
                         <div className="text-right shrink-0">
-                          <div className={`text-xs font-black tracking-tight ${tx.isCredit ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          <div className={`text-xs font-black tracking-tight ${tx.isCredit ? ui.amountCredit : ui.amountDebit}`}>
                             {tx.isCredit ? '+' : '-'}
                             {fmtVND(Math.abs(tx.signedAmount)).replace(/\s?₫/, '')}
                           </div>
@@ -1055,7 +987,7 @@ export default function WalletPanel({
                             <span>Khả dụng: {fmtVND(tx.availableAfter).replace(/\s?₫/, '')}</span>
                           )}
                           {tx.holdAfter != null && toNumber(tx.holdAfter) > 0 && (
-                            <span className="text-amber-600">Tạm giữ: {fmtVND(tx.holdAfter).replace(/\s?₫/, '')}</span>
+                            <span className={ui.holdText}>Tạm giữ: {fmtVND(tx.holdAfter).replace(/\s?₫/, '')}</span>
                           )}
                         </div>
                       </div>

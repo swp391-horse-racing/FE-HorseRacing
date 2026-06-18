@@ -7,6 +7,7 @@ import react from '@vitejs/plugin-react'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const API_ORIGIN = 'https://api.horseracing.id.vn'
+const DEV_PORT = 5173
 
 /** Copy logo từ src/assets → public để index.html dùng favicon & splash */
 function syncLogoToPublic() {
@@ -46,10 +47,16 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
+    port: DEV_PORT,
+    strictPort: true,
+    // Cho phép truy cập FE qua domain ngrok (*.ngrok-free.app, *.ngrok.io, ...)
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: API_ORIGIN,
         changeOrigin: true,
+        secure: true,
       },
     },
   },

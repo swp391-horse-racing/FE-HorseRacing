@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:ngrok": "vite --host",
+    "ngrok": "ngrok http 5173",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

@@ -2,7 +2,10 @@
 const API_ORIGIN = 'https://api.horseracing.id.vn'
 
 export const ENV = {
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? `${API_ORIGIN}/api/v1`,
+  // Dev: gọi /api/v1 qua Vite proxy → https://api.horseracing.id.vn (tránh CORS khi dùng ngrok)
+  API_BASE_URL:
+    import.meta.env.VITE_API_BASE_URL ??
+    (import.meta.env.DEV ? '/api/v1' : `${API_ORIGIN}/api/v1`),
   GOOGLE_CLIENT_ID:
     import.meta.env.VITE_GOOGLE_CLIENT_ID ??
     '798255039135-0o8kh6bhfq33qkjehg87d8q7uav28tf7.apps.googleusercontent.com',
