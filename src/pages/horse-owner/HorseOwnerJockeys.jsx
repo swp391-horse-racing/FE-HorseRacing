@@ -17,8 +17,8 @@ import {
 import { HorseOwnerLayout } from "./HorseOwnerLayout";
 import { HorseOwnerFormField } from "./components/HorseOwnerFormField";
 
-function findInvitationForJockey(invitations, jockey) {
-  return invitations.find((invitation) => String(invitation.jockeyId) === String(jockey.userId));
+function findInvitationsForJockey(invitations, jockey) {
+  return invitations.filter((invitation) => String(invitation.jockeyId) === String(jockey.userId));
 }
 
 function mergeJockeyAccountsWithProfiles(accounts, approvedProfiles) {
@@ -73,6 +73,10 @@ function buildRaceOptions(tournaments) {
         tournamentId: String(tournament.id),
         label: `${tournament.name} · ${race.name}`,
         meta: `${formatDisplayDate(race.date, "Chưa cập nhật")} ${race.time || ""}`.trim(),
+        scheduledStartAt: race.scheduledStartAt,
+        scheduledEndAt: race.scheduledEndAt,
+        venueName: race.venueName,
+        venueAddress: race.venueAddress,
       })),
   );
 }
@@ -81,8 +85,35 @@ function isActiveInvitation(invitation) {
   return ["PENDING", "ACCEPTED"].includes(invitation?.statusCode);
 }
 
-function comboKey(horseId, raceId) {
-  return `${horseId ?? ""}:${raceId ?? ""}`;
+function parseDate(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function schedulesOverlap(firstStartAt, firstEndAt, secondStartAt, secondEndAt) {
+  const firstStart = parseDate(firstStartAt);
+  const firstEnd = parseDate(firstEndAt);
+  const secondStart = parseDate(secondStartAt);
+  const secondEnd = parseDate(secondEndAt);
+
+  if (!firstStart || !firstEnd || !secondStart || !secondEnd) return false;
+  return firstStart < secondEnd && firstEnd > secondStart;
+}
+
+function summarizeJockeyInvitations(invitations) {
+  const pending = invitations.filter((invitation) => invitation.statusCode === "PENDING");
+  const accepted = invitations.filter((invitation) => invitation.statusCode === "ACCEPTED");
+
+  return {
+    latest: invitations[0] ?? null,
+    pending,
+    accepted,
+    pendingCount: pending.length,
+    acceptedCount: accepted.length,
+    totalCount: invitations.length,
+    assigned: accepted.map((invitation) => invitation.horseName).filter(Boolean).join(", "),
+  };
 }
 
 async function loadInvitableTournaments() {
@@ -135,6 +166,10 @@ export function HorseOwnerJockeys() {
         : raceOptions,
     [raceOptions, selectedTournamentId],
   );
+  const raceOptionById = useMemo(
+    () => new Map(raceOptions.map((race) => [String(race.id), race])),
+    [raceOptions],
+  );
   const selectedTournament = useMemo(
     () =>
       selectedTournamentId
@@ -143,18 +178,54 @@ export function HorseOwnerJockeys() {
     [selectedTournamentId, tournaments],
   );
 
-  const blockedInvitationCombos = useMemo(() => {
-    const blocked = new Set();
-    invitations.filter(isActiveInvitation).forEach((invitation) => {
-      if (invitation.horseId && invitation.raceId) {
-        blocked.add(comboKey(invitation.horseId, invitation.raceId));
-      }
+  const activeInvitations = useMemo(
+    () => invitations.filter(isActiveInvitation),
+    [invitations],
+  );
+
+  const getHorseRaceBlockReason = (horseId, raceId) => {
+    if (!horseId || !raceId) return null;
+
+    const selectedRace = raceOptionById.get(String(raceId));
+    const blockedInvitation = activeInvitations.find((invitation) => {
+      if (String(invitation.horseId) !== String(horseId)) return false;
+      if (String(invitation.raceId) === String(raceId)) return true;
+
+      return schedulesOverlap(
+        invitation.raceScheduledStartAt,
+        invitation.raceScheduledEndAt,
+        selectedRace?.scheduledStartAt,
+        selectedRace?.scheduledEndAt,
+      );
     });
-    return blocked;
-  }, [invitations]);
+
+    if (!blockedInvitation) return null;
+    return String(blockedInvitation.raceId) === String(raceId)
+      ? "Ngựa đã có lời mời trong race này"
+      : "Ngựa đã có lời mời ở race trùng giờ";
+  };
+
+  const pendingJockeyRaceConflicts = useMemo(() => {
+    if (!inviteTarget || !inviteForm.raceId) return [];
+
+    const selectedRace = raceOptionById.get(String(inviteForm.raceId));
+    return invitations
+      .filter(
+        (invitation) =>
+          invitation.statusCode === "PENDING" &&
+          String(invitation.jockeyId) === String(inviteTarget.userId) &&
+          String(invitation.raceId) !== String(inviteForm.raceId) &&
+          schedulesOverlap(
+            invitation.raceScheduledStartAt,
+            invitation.raceScheduledEndAt,
+            selectedRace?.scheduledStartAt,
+            selectedRace?.scheduledEndAt,
+          ),
+      );
+  }, [invitations, inviteForm.raceId, inviteTarget, raceOptionById]);
 
   const isHorseRaceBlocked = (horseId, raceId) =>
-    Boolean(horseId && raceId && blockedInvitationCombos.has(comboKey(horseId, raceId)));
+    Boolean(getHorseRaceBlockReason(horseId, raceId));
 
   const isHorseDisabledForSelectedRace = (horseId) => isHorseRaceBlocked(horseId, inviteForm.raceId);
 
@@ -211,17 +282,29 @@ export function HorseOwnerJockeys() {
   const enrichedJockeys = useMemo(
     () =>
       jockeys.map((jockey) => {
-        const invitation = findInvitationForJockey(invitations, jockey);
-        const acceptedHorse = invitations.find(
-          (item) => String(item.jockeyId) === String(jockey.userId) && item.statusCode === "ACCEPTED",
-        );
+        const jockeyInvitations = findInvitationsForJockey(invitations, jockey);
+        const invitationSummary = summarizeJockeyInvitations(jockeyInvitations);
+        const status =
+          invitationSummary.pendingCount > 0
+            ? "Chá» pháº£n há»“i"
+            : invitationSummary.acceptedCount > 0
+              ? "ÄÃ£ nháº­n"
+              : jockey.status;
+        const statusTone =
+          invitationSummary.pendingCount > 0
+            ? "gold"
+            : invitationSummary.acceptedCount > 0
+              ? "green"
+              : jockey.statusTone;
 
         return {
           ...jockey,
-          invitation,
-          status: invitation?.status ?? jockey.status,
-          statusTone: invitation?.statusTone ?? jockey.statusTone,
-          assigned: acceptedHorse?.horseName ?? null,
+          invitations: jockeyInvitations,
+          invitationSummary,
+          latestInvitation: invitationSummary.latest,
+          status,
+          statusTone,
+          assigned: invitationSummary.assigned || null,
         };
       }),
     [invitations, jockeys],
@@ -300,7 +383,9 @@ export function HorseOwnerJockeys() {
       setDetailTarget({
         ...jockey,
         ...detail,
-        invitation: jockey.invitation,
+        invitations: jockey.invitations,
+        invitationSummary: jockey.invitationSummary,
+        latestInvitation: jockey.latestInvitation,
         assigned: jockey.assigned,
       });
     } catch (error) {
@@ -318,11 +403,13 @@ export function HorseOwnerJockeys() {
   };
 
   const openInvitationDetail = (jockey) => {
-    if (!jockey.invitation) return;
+    if (!jockey.invitations?.length) return;
     setInvitationDetailTarget({
       jockeyName: jockey.name,
       jockeyLicense: jockey.license,
-      ...jockey.invitation,
+      ...jockey.invitationSummary.latest,
+      invitations: jockey.invitations,
+      invitationSummary: jockey.invitationSummary,
     });
   };
 
@@ -384,6 +471,17 @@ export function HorseOwnerJockeys() {
       const nextInvitation = await jockeyService.cancelInvitation(invitation.id);
       setInvitations((prev) =>
         prev.map((item) => (item.id === invitation.id ? nextInvitation : item)),
+      );
+      setInvitationDetailTarget((current) =>
+        current
+          ? {
+              ...current,
+              ...nextInvitation,
+              invitations: (current.invitations ?? []).map((item) =>
+                item.id === nextInvitation.id ? nextInvitation : item,
+              ),
+            }
+          : current,
       );
       toast.success("Đã hủy lời mời jockey");
     } catch (error) {
@@ -537,6 +635,23 @@ export function HorseOwnerJockeys() {
                 </div>
               </div>
 
+              {jockey.invitationSummary?.totalCount > 0 && (
+                <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-xl border border-[#D4A017]/20 bg-[#D4A017]/10 p-3">
+                    <div className="text-lg font-bold text-[#D4A017]">
+                      {jockey.invitationSummary.pendingCount}
+                    </div>
+                    <div className="text-white/50">Lời mời đang chờ</div>
+                  </div>
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
+                    <div className="text-lg font-bold text-emerald-300">
+                      {jockey.invitationSummary.acceptedCount}
+                    </div>
+                    <div className="text-white/50">Lời mời đã nhận</div>
+                  </div>
+                </div>
+              )}
+
               {jockey.specialties && (
                 <p className="mb-4 line-clamp-2 text-xs text-white/45">{jockey.specialties}</p>
               )}
@@ -545,7 +660,7 @@ export function HorseOwnerJockeys() {
                 <GhostButton className="flex-1" icon={Eye} onClick={() => openDetail(jockey)}>
                   Xem chi tiết
                 </GhostButton>
-                {jockey.invitation?.statusCode === "PENDING" ? (
+                {jockey.invitations?.length < 0 ? (
                   <GhostButton
                     className="flex-1"
                     icon={X}
@@ -555,11 +670,16 @@ export function HorseOwnerJockeys() {
                     Hủy lời mời
                   </GhostButton>
                 ) : (
-                  <GhostButton className="flex-1" icon={Send} onClick={() => openInvite(jockey)}>
+                  <GhostButton
+                    className="flex-1"
+                    icon={Send}
+                    disabled={!jockey.active || !jockey.hasApprovedProfile}
+                    onClick={() => openInvite(jockey)}
+                  >
                     Mời
                   </GhostButton>
                 )}
-                {jockey.invitation && (
+                {jockey.invitations?.length > 0 && (
                   <PrimaryButton className="flex-1" icon={Eye} onClick={() => openInvitationDetail(jockey)}>
                     Chi tiết lời mời
                   </PrimaryButton>
@@ -804,6 +924,45 @@ export function HorseOwnerJockeys() {
                 </div>
               )}
 
+              {invitationDetailTarget.invitations?.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/40">
+                    Tất cả lời mời của jockey này
+                  </div>
+                  <div className="space-y-2">
+                    {invitationDetailTarget.invitations.map((invitation) => (
+                      <div
+                        key={invitation.id}
+                        className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <div className="font-semibold text-white">
+                              {invitation.raceName || "Race chưa cập nhật"}
+                            </div>
+                            <div className="mt-1 text-xs text-white/45">
+                              {invitation.horseName || "Ngựa chưa cập nhật"} · {formatRaceDate(invitation.raceScheduledStartAt)}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Pill tone={invitation.statusTone}>{invitation.status}</Pill>
+                            {invitation.statusCode === "PENDING" && (
+                              <GhostButton
+                                icon={X}
+                                disabled={saving}
+                                onClick={() => cancelInvite(invitation)}
+                              >
+                                Hủy
+                              </GhostButton>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end border-t border-white/10 pt-4">
                 <GhostButton onClick={closeInvitationDetail}>Đóng</GhostButton>
               </div>
@@ -869,6 +1028,16 @@ export function HorseOwnerJockeys() {
               </HorseOwnerFormField>
 
               <HorseOwnerFormField label="Thù lao lời mời (VNĐ)">
+                {pendingJockeyRaceConflicts.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-[#D4A017]/30 bg-[#D4A017]/10 p-3 text-xs text-white/70">
+                    <div className="font-semibold text-[#D4A017]">Lưu ý lịch jockey</div>
+                    <p className="mt-1">
+                      Jockey này đang có {pendingJockeyRaceConflicts.length} lời mời pending trùng giờ.
+                      Nếu jockey nhận một lời mời, backend sẽ tự hủy các lời mời còn lại bị trùng lịch.
+                    </p>
+                  </div>
+                )}
+
                 <TextInput
                   type="number"
                   min="0"
