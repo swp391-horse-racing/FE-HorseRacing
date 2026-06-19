@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -335,6 +336,8 @@ export default function WalletPanel({
   }, [showBalance])
 
   const amount = selectedAmount || toNumber(customAmount)
+  const depositQrValue = depositOrder?.qrCode || depositOrder?.checkoutUrl
+  const isProviderQr = Boolean(depositOrder?.qrCode)
   const availableBalance = toNumber(wallet?.availableBalance)
   const holdBalance = toNumber(wallet?.holdBalance)
   const totalBalance = toNumber(wallet?.totalBalance)
@@ -863,14 +866,48 @@ export default function WalletPanel({
                 )}
               </div>
 
+              {depositQrValue ? (
+                <div className="mb-4 rounded-2xl border border-white/15 bg-white/[0.07] p-4">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <div className="rounded-2xl bg-white p-3 shadow-lg shadow-black/10">
+                      <QRCodeSVG
+                        value={depositQrValue}
+                        size={220}
+                        level="M"
+                        includeMargin
+                        className="h-auto w-full max-w-[220px]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-extrabold text-white">
+                        {isProviderQr ? 'Quét QR để thanh toán' : 'Quét QR để mở trang thanh toán'}
+                      </p>
+                      <p className="mx-auto max-w-sm text-xs font-semibold leading-relaxed text-white/60">
+                        {isProviderQr
+                          ? 'Mở ZaloPay hoặc ứng dụng ngân hàng hỗ trợ VietQR, quét mã này và chờ hệ thống tự cập nhật trạng thái.'
+                          : 'ZaloPay chưa trả về QR thanh toán trực tiếp, mã này sẽ mở trang thanh toán ZaloPay để hoàn tất giao dịch.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-xs font-semibold leading-relaxed text-amber-100">
+                  ZaloPay chưa trả về mã QR hoặc trang thanh toán cho lệnh này. Vui lòng thử tạo lệnh nạp mới.
+                </div>
+              )}
+
               {depositOrder.checkoutUrl && (
                 <a
                   href={depositOrder.checkoutUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-sky-500 px-5 py-3.5 text-sm font-bold text-white hover:from-blue-600 hover:to-sky-600 shadow-md shadow-blue-500/20 active:scale-[0.99] transition-all"
+                  className={`w-full flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-bold text-white active:scale-[0.99] transition-all ${
+                    depositQrValue
+                      ? 'border border-white/15 bg-white/10 hover:bg-white/15'
+                      : 'bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 shadow-md shadow-blue-500/20'
+                  }`}
                 >
-                  <span>Mở ví ZaloPay để thanh toán</span>
+                  <span>{depositQrValue ? 'Mở trang thanh toán dự phòng' : 'Mở trang thanh toán ZaloPay'}</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
               )}
