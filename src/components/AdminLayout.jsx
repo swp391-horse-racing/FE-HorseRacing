@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { tournamentService } from '@/services/tournamentService'
 import { horseService } from '@/services/horseService'
@@ -17,6 +17,7 @@ export default function AdminLayout({
   showPageHeader = true,
 }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const logout = useAuthStore((s) => s.logout)
   const user = useAuthStore((s) => s.user)
   const displayName = user?.fullName || user?.username || 'Admin'
@@ -30,11 +31,11 @@ export default function AdminLayout({
 
   const handleLogout = async () => {
     await logout()
-    navigate('/login')
+    navigate('/login', { state: { from: location }, replace: true })
   }
 
   return (
-    <div className="min-h-screen bg-[#0A1628] font-sans text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#0A1628] font-sans text-white">
       <AdminSidebar open={open} onClose={() => setOpen(false)} onLogout={handleLogout} />
       <AdminMobileOverlay open={open} onClose={() => setOpen(false)} />
 
@@ -45,7 +46,7 @@ export default function AdminLayout({
           avatarLetter={avatarLetter}
         />
 
-        <main className={`min-w-0 px-4 pb-10 md:px-8 ${showPageHeader ? '' : 'pt-0'}`}>
+        <main className={`min-w-0 overflow-x-hidden px-4 pb-10 md:px-8 ${showPageHeader ? '' : 'pt-0'}`}>
           {showPageHeader ? (
             <AdminPageHeader
               heading={heading}

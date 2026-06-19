@@ -1,4 +1,4 @@
-import { Award, Crown, Grid3x3, Info, Trash2, Users } from "lucide-react";
+import { Award, Crown, Gavel, Grid3x3, Info, Trash2, Users } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { formatDistance } from "./helpers";
 import { formatDisplayDate } from "@/utils/dateFormat";
@@ -7,6 +7,7 @@ const PANELS = [
   ["info", "Thông tin", Info],
   ["prizes", "Giải thưởng", Crown],
   ["registrations", "Đăng ký", Users],
+  ["referees", "Trọng tài", Gavel],
   ["gates", "Vị trí xuất phát", Grid3x3],
   ["race-results", "Kết quả", Award],
 ];

@@ -14,6 +14,7 @@ import RaceInfo from "./RaceInfo";
 import RaceList from "./RaceList";
 import RacePrizes from "./RacePrizes";
 import RaceRegistrations from "./RaceRegistrations";
+import RaceReferees from "./RaceReferees";
 import RaceResults from "./RaceResults";
 import {
   applyOptionDefaults,
@@ -359,7 +360,7 @@ export default function RacesTab({ tournament, setTournament, onChangeTab }) {
   }
 
   return (
-    <div className="grid gap-7 xl:grid-cols-[360px_1fr]">
+    <div className="grid min-w-0 gap-7 xl:grid-cols-[360px_minmax(0,1fr)]">
       {!provinceId && (
         <Card className="xl:col-span-2 border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
           Giải đấu chưa có tỉnh/thành phố trên hệ thống. Vui lòng lưu tỉnh ở tab{" "}
@@ -381,7 +382,7 @@ export default function RacesTab({ tournament, setTournament, onChangeTab }) {
         onSelect={setSelectedId}
       />
 
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <RaceHeader
           race={selected}
           panel={panel}
@@ -414,6 +415,13 @@ export default function RacesTab({ tournament, setTournament, onChangeTab }) {
         )}
         {panel === "registrations" && (
           <RaceRegistrations race={selected} tournament={tournament} />
+        )}
+        {panel === "referees" && (
+          <RaceReferees
+            race={selected}
+            tournament={tournament}
+            setTournament={setTournament}
+          />
         )}
         {panel === "gates" && <RaceGates race={selected} active={panel === "gates"} />}
         {panel === "race-results" && <RaceResults race={selected} />}

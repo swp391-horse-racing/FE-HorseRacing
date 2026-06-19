@@ -23,7 +23,15 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
 
   const redirectAfterAuth = (user) => {
-    navigate(getPostLoginPath(user, location.state?.from?.pathname), { replace: true })
+    const storedReturn = sessionStorage.getItem('auth:returnTo')
+    if (storedReturn) sessionStorage.removeItem('auth:returnTo')
+
+    const fromPath =
+      location.state?.from?.pathname
+      || (typeof location.state?.from === 'string' ? location.state.from : null)
+      || storedReturn
+
+    navigate(getPostLoginPath(user, fromPath), { replace: true })
   }
 
   const handleSubmit = async (e) => {

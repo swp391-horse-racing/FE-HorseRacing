@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { AlertTriangle, Search, Filter, Camera, Gavel } from 'lucide-react';
+import { AlertTriangle, Search, Filter, Camera, Gavel, Pencil } from 'lucide-react';
 import { RefereeLayout } from './RefereeLayout';
 import { GlassCard, Pill, TextInput, Select, StatCard } from '@/pages/admin/AdminLayout';
 import { useRefereeViolations } from './refereeViolationsMock';
 import { ViolationEvidencePreviewModal } from './ViolationEvidencePreview';
+import { ViolationEditModal } from './ViolationEditModal';
 import { severityTone } from '@/utils/refereeRaceUtils';
 
 export function RefereeViolations() {
   const [q, setQ] = useState('');
   const [sev, setSev] = useState('all');
   const [previewFile, setPreviewFile] = useState(null);
+  const [editingViolation, setEditingViolation] = useState(null);
   const violations = useRefereeViolations();
 
   const filtered = violations.filter((v) => {
@@ -61,6 +63,7 @@ export function RefereeViolations() {
                 <th className="px-6 py-3">Hình phạt</th>
                 <th className="px-6 py-3 text-center">Bằng chứng</th>
                 <th className="px-6 py-3">Thời điểm</th>
+                <th className="px-6 py-3 text-center">Sửa</th>
               </tr>
             </thead>
             <tbody>
@@ -94,6 +97,16 @@ export function RefereeViolations() {
                     </button>
                   </td>
                   <td className="px-6 py-3 text-xs text-white/60">{v.timestamp}</td>
+                  <td className="px-6 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setEditingViolation(v)}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-white/10 bg-white/[0.04] text-[#D4A017] hover:bg-[#D4A017]/15 hover:border-[#D4A017]/40 transition-colors"
+                      title="Chỉnh sửa vi phạm"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -108,6 +121,7 @@ export function RefereeViolations() {
       </GlassCard>
 
       <ViolationEvidencePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
+      <ViolationEditModal violation={editingViolation} onClose={() => setEditingViolation(null)} />
     </RefereeLayout>
   );
 }

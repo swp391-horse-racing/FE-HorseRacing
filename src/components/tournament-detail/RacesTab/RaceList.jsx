@@ -8,7 +8,7 @@ import { formatDisplayDate } from "@/utils/dateFormat";
 
 export default function RaceList({ races, selectedId, onAdd, onSelect }) {
   return (
-    <Card className="h-fit p-5">
+    <Card className="h-fit shrink-0 p-5">
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">Cuộc đua</h2>

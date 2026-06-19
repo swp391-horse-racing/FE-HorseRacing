@@ -15,7 +15,6 @@ import {
 } from '@/components/tournament-detail'
 import { getTotalPrize } from '@/components/tournament-detail/utils'
 import { tournamentService } from '@/services/tournamentService'
-import { fetchDefaultTournamentRules } from '@/services/systemSettingsService'
 import { useApiCacheStore } from '@/store/apiCacheStore'
 
 export default function AdminTournamentDetailPage() {
@@ -50,8 +49,8 @@ export default function AdminTournamentDetailPage() {
         setError('')
         const response = await tournamentService.getAdminTournament(id)
         if (!cancelled) {
-          const changed = useApiCacheStore.getState().setCache(cacheKey, response.data)
-          if (changed || !initialTournamentAtLoad) setTournament(response.data)
+          useApiCacheStore.getState().setCache(cacheKey, response.data)
+          setTournament(response.data)
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -85,32 +84,6 @@ export default function AdminTournamentDetailPage() {
     })
   }
 
-  useEffect(() => {
-    if (!tournament?.id) return
-
-    let cancelled = false
-
-    async function syncSystemRules() {
-      try {
-        const rules = await fetchDefaultTournamentRules()
-        if (cancelled || !rules) return
-
-        updateTournament((current) => {
-          if (!current || current.rules === rules) return current
-          return { ...current, rules }
-        })
-      } catch {
-        // Keep tournament rules from API if system settings cannot be loaded.
-      }
-    }
-
-    syncSystemRules()
-
-    return () => {
-      cancelled = true
-    }
-  }, [tournament?.id])
-
   const changeTab = (tab) => {
     const next = new URLSearchParams(searchParams)
     if (tab === 'overview') next.delete('tab')
@@ -142,6 +115,7 @@ export default function AdminTournamentDetailPage() {
 
   return (
     <AdminLayout showPageHeader={false}>
+      <div className="min-w-0">
       <TournamentHero tournament={tournament} totalRegistered={totalRegistered} />
 
       <Card className="mb-9 flex flex-wrap gap-2 p-3">
@@ -175,6 +149,7 @@ export default function AdminTournamentDetailPage() {
       {selectedTab === 'schedule' && <ScheduleTab tournament={tournament} />}
       {selectedTab === 'results' && <ResultsTab tournament={tournament} />}
       {selectedTab === 'settings' && <SettingsTab tournament={tournament} setTournament={updateTournament} />}
+      </div>
     </AdminLayout>
   )
 }

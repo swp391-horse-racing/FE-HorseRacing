@@ -67,6 +67,10 @@ export function getPublishedAssignmentsForRace(raceId) {
   }))
 }
 
+export function getPublishedAssignmentEntry(raceId) {
+  return readStore().raceAssignments[String(raceId)] ?? null
+}
+
 export function publishRaceAssignments({ tournament, race, assignments, refereesById }) {
   if (!tournament || !race || !assignments?.length) return null
 

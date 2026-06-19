@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Settings, Trash2 } from 'lucide-react'
@@ -181,6 +181,7 @@ export default function SettingsTab({ tournament, setTournament }) {
   const [deleting, setDeleting] = useState(false)
   const [provinces, setProvinces] = useState([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
+  const savedStatusCodeRef = useRef(tournament.statusCode ?? 'DRAFT')
   const today = getTodayDate()
   const registrationOpenMin = addDays(today, 1)
   const startDateMin = addDays(today, 7)
@@ -189,8 +190,15 @@ export default function SettingsTab({ tournament, setTournament }) {
   const statusOptions = STATUS_TRANSITIONS[tournament.statusCode] || [tournament.statusCode]
 
   useEffect(() => {
+    savedStatusCodeRef.current = tournament.statusCode ?? 'DRAFT'
     setDraft(makeDraft(tournament))
   }, [tournament])
+
+  useEffect(() => {
+    return () => {
+      setSaving(false)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -198,10 +206,9 @@ export default function SettingsTab({ tournament, setTournament }) {
     async function syncDefaultRules() {
       try {
         const rules = await fetchDefaultTournamentRules()
-        if (!cancelled) {
+        if (!cancelled && rules) {
           setSystemDefaultRules(rules)
           setDraft((previous) => ({ ...previous, rules }))
-          setTournament((previous) => (previous ? { ...previous, rules } : previous))
         }
       } catch {
         // Keep tournament rules if system settings cannot be loaded.
@@ -279,7 +286,7 @@ export default function SettingsTab({ tournament, setTournament }) {
   const saveSettings = async () => {
     const draftForSave = { ...draft, rules: systemDefaultRules }
     const baseChanged = hasBaseFieldChanges(tournament, draftForSave)
-    const statusChanged = draft.statusCode !== tournament.statusCode
+    const statusChanged = draft.statusCode !== savedStatusCodeRef.current
 
     if (!baseChanged && !statusChanged) {
       toast.info('Không có thay đổi để lưu')
@@ -292,8 +299,10 @@ export default function SettingsTab({ tournament, setTournament }) {
         toast.error(validationError)
         return
       }
-    } else if (statusChanged) {
-      const statusError = getStatusTransitionError(tournament.statusCode, draft.statusCode)
+    }
+
+    if (statusChanged) {
+      const statusError = getStatusTransitionError(savedStatusCodeRef.current, draft.statusCode)
       if (statusError) {
         toast.error(statusError)
         return
@@ -312,7 +321,7 @@ export default function SettingsTab({ tournament, setTournament }) {
         nextTournament = response.data
       }
 
-      if (draft.statusCode !== nextTournament.statusCode) {
+      if (statusChanged) {
         const statusResponse = await tournamentService.updateTournamentStatus(
           tournament.id,
           draft.statusCode,
@@ -321,6 +330,7 @@ export default function SettingsTab({ tournament, setTournament }) {
         invalidateTournamentListCache()
       }
 
+      savedStatusCodeRef.current = nextTournament.statusCode ?? draft.statusCode
       setTournament({ ...nextTournament, rules: systemDefaultRules })
       setDraft({ ...makeDraft(nextTournament), rules: systemDefaultRules })
       toast.success(
@@ -329,6 +339,10 @@ export default function SettingsTab({ tournament, setTournament }) {
     } catch (error) {
       console.error('Không thể lưu cài đặt giải đấu', error?.response?.data || error)
       toast.error(getApiErrorMessage(error) || 'Không thể lưu cài đặt giải đấu')
+      setDraft((previous) => ({
+        ...previous,
+        statusCode: savedStatusCodeRef.current,
+      }))
     } finally {
       setSaving(false)
     }
@@ -346,6 +360,7 @@ export default function SettingsTab({ tournament, setTournament }) {
     try {
       setScheduling(true)
       const response = await tournamentService.scheduleTournament(tournament.id)
+      savedStatusCodeRef.current = response.data.statusCode ?? savedStatusCodeRef.current
       setTournament({ ...response.data, rules: systemDefaultRules })
       setDraft({ ...makeDraft(response.data), rules: systemDefaultRules })
       useApiCacheStore.getState().setCache(`admin:tournament:${tournament.id}`, response.data)
@@ -540,7 +555,10 @@ export default function SettingsTab({ tournament, setTournament }) {
         </div>
         <PanelActions
           saving={saving}
-          onCancel={() => setDraft({ ...makeDraft(tournament), rules: systemDefaultRules })}
+          onCancel={() => {
+            savedStatusCodeRef.current = tournament.statusCode ?? 'DRAFT'
+            setDraft({ ...makeDraft(tournament), rules: systemDefaultRules })
+          }}
           onSave={saveSettings}
         />
       </Card>

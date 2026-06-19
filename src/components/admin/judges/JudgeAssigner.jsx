@@ -8,7 +8,7 @@ import AvailableRefereesPanel from './AvailableRefereesPanel'
 
 const DEFAULT_JUDGE_ROLE = 'Trọng tài chính'
 
-export default function JudgeAssigner({ tournament, race, onChangeJudges }) {
+export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssigned }) {
   const assignments = race.judges ?? []
   const [referees, setReferees] = useState([])
   const [loadingReferees, setLoadingReferees] = useState(true)
@@ -79,6 +79,7 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges }) {
       await refereeService.assignRaceReferee(race.id, primary.refereeId)
 
       toast.success('Đã gửi phân công trọng tài. Trọng tài có thể xem cuộc đua được giao.')
+      onAssigned?.(primary.refereeId)
     } catch (error) {
       toast.error(getApiErrorMessage(error) || 'Không thể gửi phân công trọng tài')
     } finally {

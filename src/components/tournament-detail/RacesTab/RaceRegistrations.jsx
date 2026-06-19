@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, RefreshCcw, XCircle, Users } from "lucide-react";
+import { CheckCircle2, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
@@ -24,7 +24,6 @@ function ActionButton({ children, icon: Icon, tone = "gold", disabled, onClick }
   const tones = {
     gold: "border-[#dda50e]/40 bg-[#dda50e]/15 text-[#fff4c2] hover:bg-[#dda50e]/25",
     red: "border-rose-400/40 bg-rose-500/15 text-rose-100 hover:bg-rose-500/25",
-    gray: "border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]",
   };
 
   return (
@@ -32,9 +31,9 @@ function ActionButton({ children, icon: Icon, tone = "gold", disabled, onClick }
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tones[tone]}`}
+      className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tones[tone]}`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-4 w-4 shrink-0" />
       {children}
     </button>
   );
@@ -59,6 +58,18 @@ function Notes({ registration }) {
     </div>
   );
 }
+
+const TABLE_HEADERS = [
+  "Mã",
+  "Ngựa",
+  "Chủ ngựa",
+  "Jockey",
+  "Phí",
+  "Trạng thái",
+  "Ghi chú",
+  "Ngày tạo",
+  "Thao tác",
+];
 
 export default function RaceRegistrations({ race, tournament }) {
   const [registrations, setRegistrations] = useState([]);
@@ -146,7 +157,7 @@ export default function RaceRegistrations({ race, tournament }) {
   };
 
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <PanelHeader
         icon={Users}
         title="Đăng ký cuộc đua"
@@ -163,23 +174,21 @@ export default function RaceRegistrations({ race, tournament }) {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1040px]">
+      <div className="max-w-full overflow-x-auto overscroll-x-contain">
+        <table className="w-full min-w-[960px]">
           <thead>
             <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-white/45">
-              {["Mã", "Ngựa", "Chủ ngựa", "Jockey", "Phí", "Trạng thái", "Ghi chú", "Ngày tạo", "Thao tác"].map(
-                (header) => (
-                  <th key={header} className="px-5 py-4">
-                    {header}
-                  </th>
-                ),
-              )}
+              {TABLE_HEADERS.map((header) => (
+                <th key={header} className="px-5 py-4">
+                  {header}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={9} className="px-5 py-10 text-center text-sm text-white/45">
+                <td colSpan={TABLE_HEADERS.length} className="px-5 py-10 text-center text-sm text-white/45">
                   Đang tải hồ sơ đăng ký...
                 </td>
               </tr>
@@ -187,7 +196,7 @@ export default function RaceRegistrations({ race, tournament }) {
 
             {!loading && !raceRegistrations.length && (
               <tr>
-                <td colSpan={9} className="px-5 py-10 text-center text-sm text-white/45">
+                <td colSpan={TABLE_HEADERS.length} className="px-5 py-10 text-center text-sm text-white/45">
                   Chưa có hồ sơ đăng ký cho cuộc đua này
                 </td>
               </tr>
@@ -199,60 +208,57 @@ export default function RaceRegistrations({ race, tournament }) {
                 const disabled = savingId === String(actionPayloadId(registration));
 
                 return (
-                  <tr
-                    key={registration.id}
-                    className="border-b border-white/5 text-sm text-white/70 last:border-0"
-                  >
-                    <td className="px-5 py-4 font-semibold text-white">#{registration.rawId}</td>
-                    <td className="px-5 py-4">
-                      <div className="font-semibold text-white">{registration.horseName}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      {registration.ownerUsername || "Chưa cập nhật"}
-                    </td>
-                    <td className="px-5 py-4">
-                      {registration.jockeyUsername || "Chưa cập nhật"}
-                    </td>
-                    <td className="px-5 py-4 font-semibold text-white/85">
-                      {fmtVND(registration.entryFeeAmount)}
-                    </td>
-                    <td className="px-5 py-4">
-                      <Badge tone={registration.statusTone}>{registration.status}</Badge>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Notes registration={registration} />
-                    </td>
-                    <td className="px-5 py-4 text-white/55">
-                      {formatDisplayDateTime(registration.createdAt, "Chưa cập nhật")}
-                    </td>
-                    <td className="px-5 py-4">
-                      {isPending ? (
-                        <div className="flex flex-wrap gap-2">
-                          <ActionButton
-                            icon={CheckCircle2}
-                            disabled={disabled}
-                            onClick={() => approveRegistration(registration)}
-                          >
-                            Duyệt
-                          </ActionButton>
-                          <ActionButton
-                            icon={XCircle}
-                            tone="red"
-                            disabled={disabled}
-                            onClick={() => rejectRegistration(registration)}
-                          >
-                            Từ chối
-                          </ActionButton>
-                        </div>
-                      ) : (
-                        <span className="inline-flex items-center gap-2 text-xs font-semibold text-white/35">
-                          <RefreshCcw className="h-4 w-4" />
-                          Lịch sử
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
+                <tr
+                  key={registration.id}
+                  className="border-b border-white/5 text-sm text-white/70 last:border-0"
+                >
+                  <td className="px-5 py-4 font-semibold text-white">#{registration.rawId}</td>
+                  <td className="px-5 py-4">
+                    <div className="font-semibold text-white">{registration.horseName}</div>
+                  </td>
+                  <td className="px-5 py-4">
+                    {registration.ownerUsername || "Chưa cập nhật"}
+                  </td>
+                  <td className="px-5 py-4">
+                    {registration.jockeyUsername || "Chưa cập nhật"}
+                  </td>
+                  <td className="px-5 py-4 font-semibold text-white/85">
+                    {fmtVND(registration.entryFeeAmount)}
+                  </td>
+                  <td className="px-5 py-4">
+                    <Badge tone={registration.statusTone}>{registration.status}</Badge>
+                  </td>
+                  <td className="px-5 py-4">
+                    <Notes registration={registration} />
+                  </td>
+                  <td className="px-5 py-4 text-white/55">
+                    {formatDisplayDateTime(registration.createdAt, "Chưa cập nhật")}
+                  </td>
+                  <td className="px-5 py-4 align-top">
+                    {isPending ? (
+                      <div className="flex min-w-[168px] flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <ActionButton
+                          icon={CheckCircle2}
+                          disabled={disabled}
+                          onClick={() => approveRegistration(registration)}
+                        >
+                          Duyệt
+                        </ActionButton>
+                        <ActionButton
+                          icon={XCircle}
+                          tone="red"
+                          disabled={disabled}
+                          onClick={() => rejectRegistration(registration)}
+                        >
+                          Từ chối
+                        </ActionButton>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-white/40">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
               })}
           </tbody>
         </table>

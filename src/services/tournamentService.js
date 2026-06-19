@@ -115,6 +115,8 @@ function mapRace(race, index) {
     scheduledEndAt,
     status: STATUS_LABELS[race?.status] ?? race?.status ?? 'Nháp',
     statusCode: race?.status,
+    refereeId: race?.refereeId == null ? '' : String(race.refereeId),
+    refereeName: race?.refereeUsername ?? race?.refereeName ?? '',
     prizes: mapRacePrizes(Array.isArray(race?.prizes) ? race.prizes : []),
     raw: race,
   }

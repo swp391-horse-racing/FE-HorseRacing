@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { authService } from '@/services/authService'
+import { invalidateTournamentListCache } from '@/services/tournamentService'
+import { useApiCacheStore } from '@/store/apiCacheStore'
 import { getStoredToken, setStoredToken, removeStoredToken } from '@/utils/tokenStorage'
 import { isTokenExpired, getRoleFromToken } from '@/utils/jwtDecode'
 import { applyAuthToState, mapAuthResponseToUser } from '@/utils/mapAuthResponse'
@@ -41,6 +43,8 @@ export const useAuthStore = create((set, get) => ({
 
   clearSession: () => {
     removeStoredToken()
+    useApiCacheStore.getState().clearCache()
+    invalidateTournamentListCache()
     set({
       token: null,
       user: null,

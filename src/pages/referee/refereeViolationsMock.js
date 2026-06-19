@@ -69,6 +69,15 @@ export function addViolation(v) {
   emitChange()
 }
 
+export function updateViolation(id, updates) {
+  const index = violations.findIndex((item) => item.id === id)
+  if (index === -1) return false
+  violations[index] = { ...violations[index], ...updates }
+  persist(violations)
+  emitChange()
+  return true
+}
+
 export function getEvidenceMediaUrl(file) {
   return file?.url || file?.previewUrl || ''
 }

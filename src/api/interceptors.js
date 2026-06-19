@@ -26,6 +26,10 @@
 
     if (!redirecting && !window.location.pathname.startsWith('/login')) {
       redirecting = true
+      const returnTo = `${window.location.pathname}${window.location.search}`
+      if (returnTo && returnTo !== '/login' && returnTo !== '/register') {
+        sessionStorage.setItem('auth:returnTo', returnTo)
+      }
       toast.error('Phiên đăng nhập đã hết hạn.')
       window.location.href = '/login'
     }
