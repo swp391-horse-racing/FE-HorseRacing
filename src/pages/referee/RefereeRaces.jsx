@@ -11,23 +11,49 @@ import {
   List as ListIcon,
   Trophy,
   Eye,
+  Mail,
 } from 'lucide-react';
 import { RefereeLayout } from './RefereeLayout';
 import { GlassCard, Pill, TextInput, Select } from '@/pages/admin/AdminLayout';
 import { useRefereeRaces } from './useRefereeRaces';
 import { getRefereeRaceStatusTone } from '@/utils/refereeRaceUtils';
+import RefereeInvitationsPanel from '@/components/referee/RefereeInvitationsPanel';
+import { useAuthStore } from '@/store/authStore';
+import {
+  getPendingInvitationCountForReferee,
+  REFEREE_INVITATIONS_UPDATED_EVENT,
+} from '@/services/refereeInvitationService';
 
-const TABS = [
+const MAIN_TABS = [
+  { key: 'operate', label: 'Điều hành cuộc đua', icon: Flag },
+  { key: 'invitations', label: 'Lời mời làm trọng tài', icon: Mail },
+];
+
+const STATUS_TABS = [
   { key: 'upcoming', label: 'Sắp diễn ra' },
   { key: 'ongoing', label: 'Đang diễn ra' },
   { key: 'completed', label: 'Đã kết thúc' },
 ];
 
 export function RefereeRaces() {
+  const user = useAuthStore((state) => state.user);
   const { races, loading, error } = useRefereeRaces();
+  const [mainTab, setMainTab] = useState('operate');
   const [tab, setTab] = useState('upcoming');
   const [q, setQ] = useState('');
   const [view, setView] = useState('grid');
+  const [pendingInvites, setPendingInvites] = useState(() =>
+    getPendingInvitationCountForReferee(user),
+  );
+
+  useEffect(() => {
+    const refreshPending = () => {
+      setPendingInvites(getPendingInvitationCountForReferee(user))
+    }
+    refreshPending()
+    window.addEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, refreshPending)
+    return () => window.removeEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, refreshPending)
+  }, [user, loading])
 
   useEffect(() => {
     if (loading || !races.length) return;
@@ -47,20 +73,64 @@ export function RefereeRaces() {
     [tab, q, races]
   );
 
+  const subtitle =
+    mainTab === 'invitations'
+      ? `${pendingInvites} lời mời đang chờ phản hồi`
+      : loading
+        ? 'Đang tải...'
+        : `Cuộc đua đã chấp nhận lời mời · Tổng cộng ${races.length} cuộc đua`;
+
   return (
     <RefereeLayout
       title="Trọng tài · Cuộc đua được giao"
-      subtitle={loading ? 'Đang tải...' : `Chỉ hiển thị race được phân công cho bạn · Tổng cộng ${races.length} race`}
+      subtitle={subtitle}
     >
-      {error && (
+      {error && mainTab === 'operate' && (
         <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
           {error}
         </div>
       )}
 
       <GlassCard className="mb-6">
+        <div className="flex flex-wrap gap-2 border-b border-white/10 p-5">
+          {MAIN_TABS.map((item) => {
+            const Icon = item.icon;
+            const active = mainTab === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setMainTab(item.key)}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                  active
+                    ? 'bg-[#D4A017] text-white shadow-md shadow-[#D4A017]/30'
+                    : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+                {item.key === 'invitations' && pendingInvites > 0 ? (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] ${
+                      active ? 'bg-white/20' : 'bg-[#D4A017]/20 text-[#D4A017]'
+                    }`}
+                  >
+                    {pendingInvites}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </GlassCard>
+
+      {mainTab === 'invitations' ? (
+        <RefereeInvitationsPanel />
+      ) : (
+        <>
+      <GlassCard className="mb-6">
         <div className="p-5 border-b border-white/10 flex flex-wrap gap-2">
-          {TABS.map((t) => {
+          {STATUS_TABS.map((t) => {
             const count = races.filter((r) => r.tabBucket === t.key).length;
             return (
               <button
@@ -85,14 +155,14 @@ export function RefereeRaces() {
             <Search className="w-4 h-4 text-white/40 absolute left-4 top-1/2 -translate-y-1/2" />
             <TextInput
               className="pl-11"
-              placeholder="Tìm theo tên race, giải đấu hoặc sân..."
+              placeholder="Tìm theo tên cuộc đua, giải đấu hoặc sân..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
           <Select value="newest" onChange={() => {}} className="md:w-48">
-            <option value="newest">Sắp nhất trước</option>
-            <option value="oldest">Cũ nhất trước</option>
+            <option value="newest">Gần nhất trước</option>
+            <option value="oldest">Xa nhất trước</option>
           </Select>
           <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
             <button
@@ -158,7 +228,7 @@ export function RefereeRaces() {
                     to={`/referee/races/${r.id}`}
                     className="w-full px-4 py-2.5 bg-[#D4A017] hover:bg-[#B8941F] text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-[#D4A017]/30 flex items-center justify-center gap-2"
                   >
-                    Vào điều hành race <ArrowRight className="w-4 h-4" />
+                    Vào điều hành cuộc đua <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               </GlassCard>
@@ -170,7 +240,7 @@ export function RefereeRaces() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-white/40 border-b border-white/10">
-                  <th className="px-6 py-3">Race</th>
+                  <th className="px-6 py-3">Cuộc đua</th>
                   <th className="px-6 py-3">Giải đấu</th>
                   <th className="px-6 py-3">Thời gian</th>
                   <th className="px-6 py-3">Sân</th>
@@ -224,8 +294,13 @@ export function RefereeRaces() {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-20 text-white/40">
           <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          Không có race nào trong mục này.
+          <p>Chưa có cuộc đua nào trong mục này.</p>
+          <p className="mt-2 text-sm text-white/35">
+            Hãy chấp nhận lời mời tại tab &quot;Lời mời làm trọng tài&quot; — admin cần gửi phân công sau đó.
+          </p>
         </div>
+      )}
+        </>
       )}
     </RefereeLayout>
   );

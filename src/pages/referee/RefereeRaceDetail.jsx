@@ -151,12 +151,12 @@ export function RefereeRaceDetail() {
 
   if (!race) {
     return (
-      <RefereeLayout title="Không tìm thấy" subtitle="Race không tồn tại hoặc bạn không được phân công">
+      <RefereeLayout title="Không tìm thấy" subtitle="Cuộc đua không tồn tại hoặc bạn không được phân công">
         <div className="text-center py-20 text-white/50">
           <Flag className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Race ID "{id}" không có trong danh sách của bạn.</p>
+          <p>Cuộc đua mã &quot;{id}&quot; không có trong danh sách của bạn.</p>
           <button onClick={() => navigate('/referee/races')} className="mt-4 text-[#D4A017] hover:underline">
-            ← Quay lại danh sách race
+            ← Quay lại danh sách cuộc đua
           </button>
         </div>
       </RefereeLayout>
@@ -165,7 +165,7 @@ export function RefereeRaceDetail() {
 
   return (
     <RefereeLayout
-      title={`Race · ${race.name}`}
+      title={`Cuộc đua · ${race.name}`}
       subtitle={`${race.tournamentName} · ${typeof race.no === 'number' ? `R${race.no}` : race.no} · ${race.date} ${race.time}`}
       actions={
         <Link to="/referee/races">
@@ -339,7 +339,7 @@ function OverviewTab({ race, participants, goManagement }) {
         <GlassCard>
           <div className="p-5 border-b border-white/10 flex items-center gap-3">
             <Gavel className="w-5 h-5 text-[#D4A017]" />
-            <h3 className="font-bold text-white">Luật race áp dụng</h3>
+            <h3 className="font-bold text-white">Luật cuộc đua áp dụng</h3>
           </div>
           <div className="p-5 text-sm text-white/70 leading-relaxed space-y-2">
             {loadingRules && (
@@ -1081,7 +1081,7 @@ function ViolationsTab({ raceId, raceName, horses }) {
               <AlertTriangle className="w-5 h-5 text-red-300" />
             </div>
             <div>
-              <h3 className="font-bold text-white">Vi phạm trong race · {raceName}</h3>
+              <h3 className="font-bold text-white">Vi phạm trong cuộc đua · {raceName}</h3>
               <p className="text-xs text-white/50">{list.length} vi phạm đã ghi nhận</p>
             </div>
           </div>
@@ -1094,7 +1094,7 @@ function ViolationsTab({ raceId, raceName, horses }) {
           {list.length === 0 && (
             <div className="text-center py-12 text-white/40 text-sm">
               <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              Chưa có vi phạm nào được ghi nhận trong race này.
+              Chưa có vi phạm nào được ghi nhận trong cuộc đua này.
             </div>
           )}
           {list.map((v) => (
@@ -1219,7 +1219,7 @@ function ViolationsTab({ raceId, raceName, horses }) {
                   <TextInput
                     value={form.penalty}
                     onChange={(e) => setForm({ ...form, penalty: e.target.value })}
-                    placeholder="VD: Trừ 3 giây thành tích · Loại khỏi race · Cấm 3 tháng..."
+                    placeholder="VD: Trừ 3 giây thành tích · Loại khỏi cuộc đua · Cấm 3 tháng..."
                   />
                 </Field>
               </div>

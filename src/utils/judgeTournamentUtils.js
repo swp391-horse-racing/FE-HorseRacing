@@ -29,6 +29,7 @@ export function mapRaceForJudges(race) {
     date: race.date,
     time: race.time,
     status: race.status,
+    statusCode: race.statusCode ?? race.raw?.status ?? '',
     judges,
     raw: race.raw,
   }

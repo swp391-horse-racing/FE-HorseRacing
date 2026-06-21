@@ -11,7 +11,6 @@ import JudgeAssigner from './JudgeAssigner'
 export default function TournamentJudgeWorkspace({ tournament, onBack, onTournamentUpdated }) {
   const [activeRaceId, setActiveRaceId] = useState(tournament.races[0]?.id ?? '')
   const [, forceRender] = useState(0)
-
   const activeRace =
     tournament.races.find((race) => race.id === activeRaceId) ?? tournament.races[0]
 

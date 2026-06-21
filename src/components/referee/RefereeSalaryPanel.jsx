@@ -31,7 +31,7 @@ export default function RefereeSalaryPanel() {
           </span>
           <div>
             <h2 className="text-lg font-bold text-white">Lương & phụ cấp đã nhận</h2>
-            <p className="text-sm text-white/50">Admin thanh toán theo từng cuộc đua được phân công</p>
+            <p className="text-sm text-white/50">Admin thanh toán sau khi cuộc đua kết thúc và chốt kết quả</p>
           </div>
         </div>
         <div className="text-right">
@@ -69,7 +69,7 @@ export default function RefereeSalaryPanel() {
         </div>
       ) : (
         <div className="px-6 py-10 text-center text-sm text-white/45">
-          Chưa có khoản lương/phụ cấp nào. Admin sẽ thanh toán sau khi phân công cuộc đua.
+          Chưa có khoản lương/phụ cấp nào. Admin sẽ thanh toán sau khi bạn chốt kết quả cuộc đua.
         </div>
       )}
     </Card>

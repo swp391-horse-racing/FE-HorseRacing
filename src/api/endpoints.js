@@ -62,8 +62,15 @@ export const ENDPOINTS = {
     registrations: (id) => `/races/${id}/registrations`,
     results: (id) => `/races/${id}/results`,
   },
+  refereeSalaryConfigs: {
+    list: '/admin/referee-salary-configs',
+    byId: (id) => `/admin/referee-salary-configs/${id}`,
+  },
   referee: {
     races: '/referee/races',
+    dashboard: '/referee/dashboard',
+    checkedInCount: '/referee/dashboard/checked-in-count',
+    pendingCheckInCount: '/referee/dashboard/pending-check-in-count',
     participants: (raceId) => `/referee/races/${raceId}/participants`,
     updateGate: (raceId, participantId) =>
       `/referee/races/${raceId}/participants/${participantId}/gate`,

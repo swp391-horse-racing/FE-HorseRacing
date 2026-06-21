@@ -1,4 +1,4 @@
-import { Plus, UserCheck } from 'lucide-react'
+import { Lock, Plus, UserCheck } from 'lucide-react'
 import { GlassCard } from '@/pages/admin/AdminLayout'
 import { refereeInitial } from '@/data/adminJudgeMock'
 
@@ -7,8 +7,12 @@ export default function AvailableRefereesPanel({
   loading = false,
   error = '',
   assignedIds,
+  locked = false,
+  maxReached = false,
   onAdd,
-}) {  const available = referees.filter((referee) => !assignedIds.has(referee.id))
+}) {
+  const available = referees.filter((referee) => !assignedIds.has(referee.id))
+  const canAdd = !locked && !maxReached
 
   return (
     <GlassCard>
@@ -16,15 +20,26 @@ export default function AvailableRefereesPanel({
         <div className="flex items-center gap-3">
           <UserCheck className="h-5 w-5 text-[#D4A017]" />
           <div>
-            <h3 className="font-bold text-white">Trọng tài khả dụng</h3>
+            <h3 className="font-bold text-white">Bước 1 · Chọn trọng tài</h3>
             <p className="text-xs text-white/50">
               {loading
                 ? 'Đang tải trọng tài từ hệ thống...'
-                : `${available.length} trọng tài chưa được phân công`}
+                : locked
+                  ? 'Phân công đã khóa sau khi thanh toán'
+                  : maxReached
+                    ? 'Đã chọn trọng tài chính — gỡ để chọn người khác'
+                    : `${available.length} trọng tài khả dụng`}
             </p>
           </div>
         </div>
       </div>
+
+      {locked ? (
+        <div className="mx-5 mt-5 flex items-start gap-3 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Cuộc đua này đã thanh toán lương trọng tài. Không thể thêm hoặc thay trọng tài.</p>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
         {loading ? (
@@ -62,8 +77,19 @@ export default function AvailableRefereesPanel({
               <button
                 type="button"
                 onClick={() => onAdd(referee.id)}
-                className="shrink-0 rounded-lg p-2 text-emerald-300/80 transition-all hover:bg-emerald-500/10 hover:text-emerald-300"
-                title="Thêm vào tổ trọng tài"
+                disabled={!canAdd}
+                className={`shrink-0 rounded-lg p-2 transition-all ${
+                  canAdd
+                    ? 'text-emerald-300/80 hover:bg-emerald-500/10 hover:text-emerald-300'
+                    : 'cursor-not-allowed text-white/20'
+                }`}
+                title={
+                  locked
+                    ? 'Đã thanh toán — không thể thêm'
+                    : maxReached
+                      ? 'Đã có trọng tài chính'
+                      : 'Thêm vào tổ trọng tài'
+                }
               >
                 <Plus className="h-4 w-4" />
               </button>

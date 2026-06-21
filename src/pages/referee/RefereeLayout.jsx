@@ -97,7 +97,7 @@ export function RefereeLayout({ children, title, subtitle, actions }) {
           <div className="mb-2 p-3 bg-white/[0.04] rounded-xl border border-white/10">
             <div className="flex items-center gap-2 mb-1">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">On duty</span>
+              <span className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">Đang trực</span>
             </div>
             <div className="text-[11px] text-white/60 truncate">{displayName}</div>
           </div>
@@ -126,7 +126,12 @@ export function RefereeLayout({ children, title, subtitle, actions }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <RoleWalletBadge to={WALLET_PATHS.REFEREE} walletMode="user" theme="dark" />
+            <RoleWalletBadge
+              to={WALLET_PATHS.REFEREE}
+              walletMode="user"
+              theme="dark"
+              includeRefereeSalary
+            />
             <button className="p-2 hover:bg-white/5 rounded-lg relative">
               <Mail className="w-5 h-5 text-white/60" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#D4A017] rounded-full" />

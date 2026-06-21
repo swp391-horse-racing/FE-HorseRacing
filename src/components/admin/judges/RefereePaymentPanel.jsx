@@ -10,12 +10,22 @@ import {
   REFEREE_FEE_UPDATED_EVENT,
 } from '@/services/refereeFeeSettingsService'
 import { fmtVND } from '@/utils/formatCurrency'
+import {
+  isRaceCompletedForRefereePayout,
+  refereePayoutBlockedMessage,
+} from '@/utils/refereePayoutUtils'
 
 function resolveAssignedRefereeId(race) {
   return race?.raw?.refereeId ?? race?.refereeId ?? null
 }
 
-export default function RefereePaymentPanel({ tournament, race, refereesById = new Map() }) {
+export default function RefereePaymentPanel({
+  tournament,
+  race,
+  refereesById = new Map(),
+  payoutLocked = false,
+  onPayoutChange,
+}) {
   const [feeSettings, setFeeSettings] = useState(() => readRefereeFeeSettings())
   const [payout, setPayout] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -31,6 +41,16 @@ export default function RefereePaymentPanel({ tournament, race, refereesById = n
     assignedReferee?.name ||
     payout?.refereeName ||
     ''
+
+  const raceCompleted = useMemo(
+    () => isRaceCompletedForRefereePayout(race, tournament),
+    [race, tournament],
+  )
+  const payoutBlockedMessage = useMemo(
+    () => refereePayoutBlockedMessage(race, tournament),
+    [race, tournament],
+  )
+  const canPay = Boolean(assignedRefereeId) && raceCompleted && !payout?.paid
 
   const loadPayoutStatus = useCallback(async () => {
     if (!race?.id) {
@@ -72,6 +92,11 @@ export default function RefereePaymentPanel({ tournament, race, refereesById = n
       return
     }
 
+    if (!raceCompleted) {
+      toast.error(payoutBlockedMessage || 'Cuộc đua chưa hoàn thành')
+      return
+    }
+
     const amount = feeSettings.perRaceFee
     if (!Number.isFinite(amount) || amount <= 0) {
       toast.error('Hãy cấu hình mức lương trọng tài tại Cài đặt hệ thống')
@@ -89,9 +114,14 @@ export default function RefereePaymentPanel({ tournament, race, refereesById = n
         tournament,
       })
       setPayout(result)
+      onPayoutChange?.()
       toast.success(`Đã ghi nhận thanh toán ${fmtVND(amount)} cho trọng tài`)
-    } catch {
-      toast.error('Không thể ghi nhận thanh toán lương trọng tài')
+    } catch (error) {
+      if (error?.message === 'RACE_NOT_COMPLETED') {
+        toast.error('Chỉ thanh toán sau khi cuộc đua hoàn thành và chốt kết quả')
+      } else {
+        toast.error('Không thể ghi nhận thanh toán lương trọng tài')
+      }
     } finally {
       setPaying(false)
     }
@@ -105,9 +135,9 @@ export default function RefereePaymentPanel({ tournament, race, refereesById = n
             <Banknote className="h-5 w-5 text-emerald-300" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Thanh toán lương trọng tài</h2>
+            <h2 className="text-base font-bold text-white">Bước 3 · Thanh toán lương trọng tài</h2>
             <p className="text-xs text-white/50">
-              {tournament.name} · {race.name}
+              {tournament.name} · {race.name} · Một lần thanh toán / cuộc đua
             </p>
           </div>
         </div>
@@ -144,6 +174,24 @@ export default function RefereePaymentPanel({ tournament, race, refereesById = n
           </div>
         </div>
 
+        {!assignedRefereeId ? (
+          <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Hoàn thành bước 2 (gửi phân công) trước khi thanh toán lương.
+          </div>
+        ) : null}
+
+        {assignedRefereeId && !raceCompleted && !payoutLocked ? (
+          <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {payoutBlockedMessage}
+          </div>
+        ) : null}
+
+        {payoutLocked ? (
+          <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            Đã thanh toán cho trọng tài này. Không thể thêm trọng tài khác hoặc thay đổi phân công.
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-white/70">
             {loading ? (
@@ -157,8 +205,10 @@ export default function RefereePaymentPanel({ tournament, race, refereesById = n
                 Đã thanh toán {fmtVND(payout.amount || feeSettings.perRaceFee)}
                 {payout.paidAt ? ` · ${new Date(payout.paidAt).toLocaleString('vi-VN')}` : ''}
               </>
+            ) : assignedRefereeId && raceCompleted ? (
+              <>Cuộc đua đã hoàn thành — sẵn sàng thanh toán lương trọng tài</>
             ) : assignedRefereeId ? (
-              <>Sẵn sàng ghi nhận thanh toán cho trọng tài</>
+              <>Chờ cuộc đua kết thúc và chốt kết quả</>
             ) : (
               <>Chưa thể thanh toán — cần phân công trọng tài trước</>
             )}
@@ -172,13 +222,13 @@ export default function RefereePaymentPanel({ tournament, race, refereesById = n
         </div>
 
         <p className="text-xs text-white/40">
-          Trọng tài xem khoản đã nhận tại mục Ví của tôi → Lương & phụ cấp.
+          Thanh toán chỉ sau khi trọng tài chốt kết quả. Trọng tài nhận tiền tại Ví của tôi → Lương & phụ cấp.
         </p>
 
         <div className="flex justify-end">
           <PrimaryButton
             icon={Banknote}
-            disabled={paying || loading || !assignedRefereeId || payout?.paid}
+            disabled={paying || loading || !canPay}
             onClick={handlePay}
           >
             {paying

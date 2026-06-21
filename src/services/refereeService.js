@@ -2,6 +2,10 @@ import axiosClient from '@/api/axiosClient'
 import { ENDPOINTS } from '@/api/endpoints'
 import { unwrapResponse } from '@/api/response'
 import { mapUser } from '@/services/adminUserService'
+import {
+  readRefereeFeeSettings,
+  DEFAULT_REFEREE_PER_RACE_FEE,
+} from '@/services/refereeFeeSettingsService'
 
 function mapReferee(user, profile) {
   const experienceYears = Number(profile?.experienceYears ?? 0)
@@ -48,10 +52,40 @@ export const refereeService = {
     }
   },
 
-  async assignRaceReferee(raceId, refereeId) {
+  async getSalaryConfigs() {
+    const data = await axiosClient.get(ENDPOINTS.refereeSalaryConfigs.list).then(unwrapResponse)
+    return Array.isArray(data) ? data : []
+  },
+
+  async ensureSalaryConfigId() {
+    const configs = await this.getSalaryConfigs()
+    const existing = configs.find((config) => config?.active) ?? configs[0]
+    if (existing?.id != null) return existing.id
+
+    let amount = DEFAULT_REFEREE_PER_RACE_FEE
+    const fee = Number(readRefereeFeeSettings()?.perRaceFee)
+    if (Number.isFinite(fee) && fee > 0) amount = fee
+
+    const created = await axiosClient
+      .post(ENDPOINTS.refereeSalaryConfigs.list, {
+        name: 'Lương trọng tài mặc định',
+        raceType: 'Chung',
+        amount,
+        active: true,
+      })
+      .then(unwrapResponse)
+    return created?.id
+  },
+
+  async assignRaceReferee(raceId, refereeId, salaryConfigId) {
+    let configId = salaryConfigId
+    if (configId == null) {
+      configId = await this.ensureSalaryConfigId()
+    }
     return axiosClient
       .put(ENDPOINTS.races.assignReferee(raceId), {
         refereeId: Number(refereeId),
+        salaryConfigId: Number(configId),
       })
       .then(unwrapResponse)
   },
@@ -59,6 +93,20 @@ export const refereeService = {
   async getAssignedRaces() {
     const data = await axiosClient.get(ENDPOINTS.referee.races).then(unwrapResponse)
     return Array.isArray(data) ? data : []
+  },
+
+  async getDashboard() {
+    return axiosClient.get(ENDPOINTS.referee.dashboard).then(unwrapResponse)
+  },
+
+  async getCheckedInCount() {
+    const data = await axiosClient.get(ENDPOINTS.referee.checkedInCount).then(unwrapResponse)
+    return Number(data?.count ?? 0)
+  },
+
+  async getPendingCheckInCount() {
+    const data = await axiosClient.get(ENDPOINTS.referee.pendingCheckInCount).then(unwrapResponse)
+    return Number(data?.count ?? 0)
   },
 
   async getAssignedRaceById(raceId) {

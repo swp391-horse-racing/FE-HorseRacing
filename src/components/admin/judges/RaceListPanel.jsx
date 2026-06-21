@@ -1,6 +1,50 @@
-import { AlertTriangle, CheckCircle2, Flag, Gavel } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertTriangle, CheckCircle2, Clock3, Flag, Gavel, XCircle } from 'lucide-react'
 import { GlassCard } from '@/pages/admin/AdminLayout'
 import { isRaceJudgeReady } from '@/data/adminJudgeMock'
+import {
+  getInvitationSummaryForRace,
+  REFEREE_INVITATIONS_UPDATED_EVENT,
+} from '@/services/refereeInvitationService'
+
+function RaceInviteHint({ raceId }) {
+  const [summary, setSummary] = useState({ pending: 0, accepted: 0, declined: 0, acceptedReferee: null })
+
+  useEffect(() => {
+    const refresh = () => {
+      setSummary(getInvitationSummaryForRace(raceId))
+    }
+    refresh()
+    window.addEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, refresh)
+    return () => window.removeEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, refresh)
+  }, [raceId])
+
+  if (summary.accepted > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-emerald-300/90">
+        <CheckCircle2 className="h-3 w-3" />
+        {summary.acceptedReferee?.refereeName || '1'} đã đồng ý
+      </span>
+    )
+  }
+  if (summary.pending > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[#D4A017]/90">
+        <Clock3 className="h-3 w-3" />
+        {summary.pending} chờ phản hồi
+      </span>
+    )
+  }
+  if (summary.declined > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-white/45">
+        <XCircle className="h-3 w-3" />
+        {summary.declined} đã từ chối
+      </span>
+    )
+  }
+  return null
+}
 
 export default function RaceListPanel({ races, activeRaceId, onSelectRace }) {
   return (
@@ -50,9 +94,12 @@ export default function RaceListPanel({ races, activeRaceId, onSelectRace }) {
                   <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400/70" />
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-white/50">
-                <Gavel className="h-3 w-3 text-[#D4A017]" />
-                {count} trọng tài
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/50">
+                <span className="inline-flex items-center gap-1.5">
+                  <Gavel className="h-3 w-3 text-[#D4A017]" />
+                  {count} trọng tài
+                </span>
+                <RaceInviteHint raceId={race.id} />
               </div>
             </button>
           )

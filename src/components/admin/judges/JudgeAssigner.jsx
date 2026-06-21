@@ -1,13 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { refereeService } from '@/services/refereeService'
 import { publishRaceAssignments } from '@/services/refereeAssignmentService'
+import {
+  getRacePayoutStatusSync,
+  REFEREE_PAYOUTS_UPDATED_EVENT,
+} from '@/services/refereePaymentService'
+import { isRaceCompletedForRefereePayout } from '@/utils/refereePayoutUtils'
 import { getApiErrorMessage } from '@/utils/apiError'
 import AssignedJudgesPanel from './AssignedJudgesPanel'
-import AvailableRefereesPanel from './AvailableRefereesPanel'
+import RefereeInvitePanel from './RefereeInvitePanel'
 import RefereePaymentPanel from './RefereePaymentPanel'
+import JudgeWorkflowSteps from './JudgeWorkflowSteps'
 
 const DEFAULT_JUDGE_ROLE = 'Trọng tài chính'
+const MAX_REFEREES_PER_RACE = 1
+
+function resolveAssignedRefereeId(race) {
+  return race?.raw?.refereeId ?? race?.refereeId ?? null
+}
 
 export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssigned }) {
   const assignments = race.judges ?? []
@@ -15,6 +26,32 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
   const [loadingReferees, setLoadingReferees] = useState(true)
   const [refereeError, setRefereeError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [payoutStatus, setPayoutStatus] = useState(() =>
+    race?.id ? getRacePayoutStatusSync(race.id) : null,
+  )
+
+  const payoutLocked = Boolean(payoutStatus?.paid)
+  const officialRefereeId = resolveAssignedRefereeId(race)
+  const isOfficiallyAssigned = Boolean(officialRefereeId)
+  const isRaceCompleted = isRaceCompletedForRefereePayout(race, tournament)
+
+  const refreshPayoutStatus = useCallback(() => {
+    if (!race?.id) {
+      setPayoutStatus(null)
+      return
+    }
+    setPayoutStatus(getRacePayoutStatusSync(race.id))
+  }, [race?.id])
+
+  useEffect(() => {
+    refreshPayoutStatus()
+  }, [refreshPayoutStatus, officialRefereeId])
+
+  useEffect(() => {
+    const handleUpdated = () => refreshPayoutStatus()
+    window.addEventListener(REFEREE_PAYOUTS_UPDATED_EVENT, handleUpdated)
+    return () => window.removeEventListener(REFEREE_PAYOUTS_UPDATED_EVENT, handleUpdated)
+  }, [refreshPayoutStatus])
 
   useEffect(() => {
     let cancelled = false
@@ -53,15 +90,58 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
   )
 
   const addJudge = (refereeId) => {
+    if (payoutLocked) {
+      toast.error('Cuộc đua này đã thanh toán lương — không thể thêm trọng tài')
+      return
+    }
     if (assignedIds.has(refereeId)) return
+    if (assignments.length >= MAX_REFEREES_PER_RACE) {
+      toast.info('Mỗi cuộc đua chỉ có một trọng tài chính. Hãy gỡ trọng tài hiện tại trước khi chọn người khác.')
+      return
+    }
     onChangeJudges([...assignments, { refereeId, role: DEFAULT_JUDGE_ROLE }])
   }
 
   const removeJudge = (refereeId) => {
+    if (payoutLocked) {
+      toast.error('Cuộc đua này đã thanh toán lương — không thể thay đổi phân công')
+      return
+    }
     onChangeJudges(assignments.filter((item) => item.refereeId !== refereeId))
   }
 
+  const inviteReferee = async (referee) => {
+    if (!referee?.id) return
+    if (payoutLocked) {
+      toast.error('Cuộc đua này đã thanh toán lương — không thể gửi thêm lời mời')
+      return
+    }
+    if (officialRefereeId && String(officialRefereeId) !== String(referee.id)) {
+      toast.error('Cuộc đua đã có trọng tài. Không thể đổi trọng tài sau khi phân công.')
+      return
+    }
+
+    try {
+      setSaving(true)
+      const assignment = [{ refereeId: referee.id, role: DEFAULT_JUDGE_ROLE }]
+      publishRaceAssignments({ tournament, race, assignments: assignment, refereesById })
+      await refereeService.assignRaceReferee(race.id, referee.id)
+      onChangeJudges(assignment)
+      toast.success(`Đã gửi lời mời/phân công tới ${referee.name}. Trọng tài sẽ thấy ở mục "Lời mời".`)
+      onAssigned?.({ refereeId: referee.id })
+    } catch (error) {
+      toast.error(getApiErrorMessage(error) || 'Không thể gửi lời mời trọng tài')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const submitAssignment = async () => {
+    if (payoutLocked) {
+      toast.error('Cuộc đua này đã thanh toán lương — không thể gửi lại phân công')
+      return
+    }
+
     const primary = assignments[0]
     if (!primary) {
       toast.error('Phải chọn ít nhất một trọng tài trước khi gửi phân công')
@@ -90,25 +170,43 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
 
   return (
     <div className="space-y-6">
+      <JudgeWorkflowSteps
+        hasSelection={assignments.length > 0}
+        isAssigned={isOfficiallyAssigned}
+        isRaceCompleted={isRaceCompleted}
+        isPaid={payoutLocked}
+        isLocked={payoutLocked}
+      />
+
+      <RefereeInvitePanel
+        tournament={tournament}
+        race={race}
+        locked={payoutLocked}
+        saving={saving}
+        maxReached={assignments.length >= MAX_REFEREES_PER_RACE}
+        assignedIds={assignedIds}
+        officialRefereeId={officialRefereeId}
+        onSelectForAssignment={(referee) => addJudge(referee.id)}
+        onInviteReferee={inviteReferee}
+      />
+
       <AssignedJudgesPanel
         race={race}
         assignments={assignments}
         refereesById={refereesById}
         saving={saving}
+        locked={payoutLocked}
+        isOfficiallyAssigned={isOfficiallyAssigned}
         onRemove={removeJudge}
         onSubmit={submitAssignment}
       />
-      <AvailableRefereesPanel
-        referees={referees}
-        loading={loadingReferees}
-        error={refereeError}
-        assignedIds={assignedIds}
-        onAdd={addJudge}
-      />
+
       <RefereePaymentPanel
         tournament={tournament}
         race={race}
         refereesById={refereesById}
+        payoutLocked={payoutLocked}
+        onPayoutChange={refreshPayoutStatus}
       />
     </div>
   )

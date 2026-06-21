@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { refereeService } from '@/services/refereeService'
 import {
+  loadAssignedRacesFromApi,
+  filterRacesForRefereeOperation,
+  REFEREE_INVITATIONS_UPDATED_EVENT,
+} from '@/services/refereeInvitationService'
+import { useAuthStore } from '@/store/authStore'
+import {
   buildTournamentNameMap,
   buildTournamentStatusMap,
   countCheckedInParticipants,
@@ -45,13 +51,18 @@ async function enrichRacesWithCheckInProgress(races) {
 }
 
 export function useRefereeRaces() {
+  const userId = useAuthStore((state) => state.user?.id ?? state.user?.userId)
   const [races, setRaces] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const hasLoadedRef = useRef(false)
+  const reloadingRef = useRef(false)
 
   const reload = useCallback(async ({ silent = false } = {}) => {
+    if (reloadingRef.current) return
+    reloadingRef.current = true
+
     const isInitialLoad = !hasLoadedRef.current
     if (isInitialLoad && !silent) {
       setLoading(true)
@@ -61,31 +72,26 @@ export function useRefereeRaces() {
     setError('')
 
     try {
-      const data = await refereeService.getAssignedRaces()
-      const tournamentIds = data.map((race) => race.tournamentId)
-      const initialMapped = mapAssignedRaces(data)
-      setRaces(initialMapped)
-      hasLoadedRef.current = true
+      const data = await loadAssignedRacesFromApi()
+      const user = useAuthStore.getState().user
+      const allowed = filterRacesForRefereeOperation(data, user)
+      const tournamentIds = allowed.map((race) => race.tournamentId)
 
-      if (isInitialLoad) {
-        setLoading(false)
+      let nameById = new Map()
+      let statusById = new Map()
+      try {
+        ;[nameById, statusById] = await Promise.all([
+          buildTournamentNameMap(tournamentIds),
+          buildTournamentStatusMap(tournamentIds),
+        ])
+      } catch {
+        // dùng dữ liệu race gốc nếu không tải được meta giải
       }
 
-      enrichRacesWithCheckInProgress(initialMapped).then(setRaces).catch(() => {})
-
-      Promise.all([
-        buildTournamentNameMap(tournamentIds),
-        buildTournamentStatusMap(tournamentIds),
-      ])
-        .then(async ([nameById, statusById]) => {
-          const mapped = mapAssignedRaces(data, { nameById, statusById })
-          const withCheckIn = await enrichRacesWithCheckInProgress(mapped)
-          setRaces(withCheckIn)
-        })
-        .catch(async () => {
-          const withCheckIn = await enrichRacesWithCheckInProgress(mapAssignedRaces(data))
-          setRaces(withCheckIn)
-        })
+      const mapped = mapAssignedRaces(allowed, { nameById, statusById })
+      const withCheckIn = await enrichRacesWithCheckInProgress(mapped)
+      setRaces(withCheckIn)
+      hasLoadedRef.current = true
     } catch (err) {
       setError(getApiErrorMessage(err) || 'Không tải được danh sách cuộc đua')
       if (!hasLoadedRef.current) {
@@ -94,11 +100,18 @@ export function useRefereeRaces() {
     } finally {
       setLoading(false)
       setRefreshing(false)
+      reloadingRef.current = false
     }
-  }, [])
+  }, [userId])
 
   useEffect(() => {
     reload()
+  }, [reload])
+
+  useEffect(() => {
+    const handleInvitationsUpdated = () => reload({ silent: true })
+    window.addEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, handleInvitationsUpdated)
+    return () => window.removeEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, handleInvitationsUpdated)
   }, [reload])
 
   return { races, loading, refreshing, error, reload }

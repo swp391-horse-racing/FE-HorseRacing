@@ -17,6 +17,8 @@ function writeStore(store) {
   window.dispatchEvent(new CustomEvent(REFEREE_PAYOUTS_UPDATED_EVENT))
 }
 
+import { isRaceCompletedForRefereePayout } from '@/utils/refereePayoutUtils'
+
 function mapPayout(record, raceId) {
   if (!record?.paid) {
     return {
@@ -39,13 +41,25 @@ function mapPayout(record, raceId) {
   }
 }
 
+export function getRacePayoutStatusSync(raceId) {
+  const record = readStore().byRaceId[String(raceId)] ?? null
+  return mapPayout(record, raceId)
+}
+
+export function isRacePayoutLocked(raceId) {
+  return Boolean(getRacePayoutStatusSync(raceId).paid)
+}
+
 export const refereePaymentService = {
   getRacePayoutStatus(raceId) {
-    const record = readStore().byRaceId[String(raceId)] ?? null
-    return Promise.resolve(mapPayout(record, raceId))
+    return Promise.resolve(getRacePayoutStatusSync(raceId))
   },
 
   payRefereeForRace(raceId, { refereeId, amount, refereeName, refereeEmail, race, tournament }) {
+    if (!isRaceCompletedForRefereePayout(race, tournament)) {
+      return Promise.reject(new Error('RACE_NOT_COMPLETED'))
+    }
+
     const store = readStore()
     const key = String(raceId)
     const existing = store.byRaceId[key]

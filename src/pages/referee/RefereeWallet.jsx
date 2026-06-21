@@ -6,7 +6,7 @@ export function RefereeWallet() {
   return (
     <RefereeLayout
       title="Ví của tôi · Trọng tài"
-      subtitle="Nhận tiền lương định kỳ và phụ cấp công tác từ hệ thống"
+      subtitle="Lương cuộc đua được cộng vào ví sau khi admin thanh toán (sau khi chốt kết quả)"
     >
       <RefereeSalaryPanel />
       <WalletPanel
