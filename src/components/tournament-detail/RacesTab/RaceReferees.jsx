@@ -4,77 +4,50 @@ import { ArrowUpRight, Gavel } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import { PanelHeader } from "@/components/ui/Panel";
-import JudgeAssigner from "@/components/admin/judges/JudgeAssigner";
 import { refereeService } from "@/services/refereeService";
 import { getPublishedAssignmentEntry } from "@/services/refereeAssignmentService";
-import { tournamentService } from "@/services/tournamentService";
-import { mapRaceForJudges } from "@/utils/judgeTournamentUtils";
-import { toneForStatus } from "../utils";
 import { formatDisplayDate } from "@/utils/dateFormat";
+import { getAdminRaceDisplayStatus, toneForStatus } from "../utils";
 
-function resolveRefereeLabels(judgeRace, refereesById) {
-  const published = getPublishedAssignmentEntry(judgeRace.id);
-  if (published?.assignments?.length) {
-    return published.assignments.map(
-      (item) =>
-        item.refereeName ||
-        refereesById.get(String(item.refereeId))?.name ||
-        "Trọng tài",
-    );
-  }
+function resolveRefereeAssignment(race, refereesById) {
+  const published = getPublishedAssignmentEntry(race.id);
+  const refereeId =
+    race.refereeId ||
+    race.raw?.refereeId ||
+    published?.assignments?.[0]?.refereeId ||
+    null;
 
-  if (judgeRace.raw?.refereeUsername) {
-    return [judgeRace.raw.refereeUsername];
-  }
+  const name =
+    race.refereeName?.trim() ||
+    race.raw?.refereeUsername ||
+    published?.assignments?.[0]?.refereeName ||
+    (refereeId ? refereesById.get(String(refereeId))?.name : "") ||
+    "";
 
-  if (judgeRace.judges?.length) {
-    return judgeRace.judges.map(
-      (item) => refereesById.get(String(item.refereeId))?.name || "Chưa xác định",
-    );
-  }
+  const referee = refereeId ? refereesById.get(String(refereeId)) : null;
 
-  return [];
+  return {
+    assigned: Boolean(refereeId || name),
+    name,
+    referee,
+  };
 }
 
-export default function RaceReferees({ race, tournament, setTournament }) {
+function assignmentTone(assigned) {
+  return assigned ? "green" : "blue";
+}
+
+export default function RaceReferees({ race, tournament }) {
   const [referees, setReferees] = useState([]);
   const [loadingReferees, setLoadingReferees] = useState(true);
   const [assignmentsVersion, setAssignmentsVersion] = useState(0);
-  const [judges, setJudges] = useState(() => mapRaceForJudges(race).judges);
 
-  const judgeTournament = useMemo(
-    () => ({
-      id: tournament.id,
-      name: tournament.name,
-      location: tournament.location ?? "",
-      races: (tournament.races ?? []).map(mapRaceForJudges),
-    }),
-    [tournament],
-  );
-
-  const mappedRace = useMemo(
-    () => mapRaceForJudges(race),
-    [race, assignmentsVersion],
-  );
-
-  const assignerRace = useMemo(
-    () => ({ ...mappedRace, judges }),
-    [mappedRace, judges],
-  );
-
-  const tournamentRaces = useMemo(
-    () => (tournament.races ?? []).map(mapRaceForJudges),
-    [tournament.races, assignmentsVersion],
-  );
+  const tournamentRaces = tournament.races ?? [];
 
   const refereesById = useMemo(
     () => new Map(referees.map((referee) => [referee.id, referee])),
     [referees],
   );
-
-  useEffect(() => {
-    setJudges(mapRaceForJudges(race).judges);
-  }, [race.id, race.raw?.refereeId, assignmentsVersion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,22 +76,6 @@ export default function RaceReferees({ race, tournament, setTournament }) {
     return () => window.removeEventListener("referee-assignments-updated", handleAssignmentsUpdated);
   }, []);
 
-  const refreshTournament = async () => {
-    if (!setTournament || !tournament?.id) return;
-
-    try {
-      const response = await tournamentService.getAdminTournament(tournament.id);
-      setTournament(response.data);
-    } catch (error) {
-      console.error("Không thể làm mới phân công trọng tài", error?.response?.data || error);
-    }
-  };
-
-  const handleAssigned = async () => {
-    setAssignmentsVersion((value) => value + 1);
-    await refreshTournament();
-  };
-
   return (
     <div className="space-y-6">
       <Card className="min-w-0 overflow-hidden">
@@ -130,8 +87,9 @@ export default function RaceReferees({ race, tournament, setTournament }) {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 pb-4">
           <p className="text-sm text-white/55">
-            Xem nhanh trọng tài được giao cho từng cuộc đua của giải{" "}
-            <strong className="text-white/80">{tournament.name}</strong>.
+            Xem trạng thái phân công trọng tài cho từng cuộc đua của giải{" "}
+            <strong className="text-white/80">{tournament.name}</strong>. Phân công tại trang
+            riêng.
           </p>
           <Link
             to="/admin/judges"
@@ -143,10 +101,17 @@ export default function RaceReferees({ race, tournament, setTournament }) {
         </div>
 
         <div className="max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="w-full min-w-[720px]">
+          <table className="w-full min-w-[760px]">
             <thead>
               <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-white/45">
-                {["Vòng", "Cuộc đua", "Lịch", "Trạng thái", "Trọng tài phân công"].map((header) => (
+                {[
+                  "Vòng",
+                  "Cuộc đua",
+                  "Lịch",
+                  "Trạng thái giải",
+                  "Trọng tài",
+                  "Phân công",
+                ].map((header) => (
                   <th key={header} className="px-5 py-4">
                     {header}
                   </th>
@@ -155,12 +120,16 @@ export default function RaceReferees({ race, tournament, setTournament }) {
             </thead>
             <tbody>
               {tournamentRaces.map((item) => {
-                const labels = resolveRefereeLabels(item, refereesById);
+                const { assigned, name, referee } = resolveRefereeAssignment(
+                  item,
+                  refereesById,
+                );
                 const isActive = String(item.id) === String(race.id);
+                const displayStatus = getAdminRaceDisplayStatus(item, tournament);
 
                 return (
                   <tr
-                    key={item.id}
+                    key={`${item.id}-${assignmentsVersion}`}
                     className={`border-b border-white/5 text-sm last:border-0 ${
                       isActive ? "bg-[#dda50e]/10" : ""
                     }`}
@@ -177,22 +146,30 @@ export default function RaceReferees({ race, tournament, setTournament }) {
                       {item.time ? ` · ${item.time}` : ""}
                     </td>
                     <td className="px-5 py-4">
-                      <Badge tone={toneForStatus(item.status)}>{item.status}</Badge>
+                      <Badge tone={toneForStatus(displayStatus)}>{displayStatus}</Badge>
                     </td>
                     <td className="px-5 py-4">
-                      {loadingReferees && !labels.length ? (
+                      {loadingReferees && assigned && !name ? (
                         <span className="text-white/40">Đang tải...</span>
-                      ) : labels.length ? (
-                        <div className="space-y-1">
-                          {labels.map((label) => (
-                            <div key={`${item.id}-${label}`} className="font-medium text-white/85">
-                              {label}
-                            </div>
-                          ))}
+                      ) : assigned && name ? (
+                        <div>
+                          <div className="font-medium text-white/85">{name}</div>
+                          {referee ? (
+                            <span className="text-xs text-white/45">
+                              {referee.license !== "Chưa có giấy phép"
+                                ? `GP: ${referee.license}`
+                                : "Trọng tài"}
+                            </span>
+                          ) : null}
                         </div>
                       ) : (
-                        <span className="text-white/40">Chưa phân công</span>
+                        <span className="text-white/40">—</span>
                       )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <Badge tone={assignmentTone(assigned)}>
+                        {assigned ? "Đã phân công" : "Chưa phân công"}
+                      </Badge>
                     </td>
                   </tr>
                 );
@@ -201,19 +178,6 @@ export default function RaceReferees({ race, tournament, setTournament }) {
           </table>
         </div>
       </Card>
-
-      <div>
-        <p className="mb-3 text-sm text-white/50">
-          Phân công cho cuộc đua đang chọn:{" "}
-          <strong className="text-white/80">{race.name || `R${race.no}`}</strong>
-        </p>
-        <JudgeAssigner
-          tournament={judgeTournament}
-          race={assignerRace}
-          onChangeJudges={setJudges}
-          onAssigned={handleAssigned}
-        />
-      </div>
     </div>
   );
 }

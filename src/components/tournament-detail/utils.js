@@ -1,17 +1,10 @@
-import { horsePool } from '@/data/admin/tournamentMocks'
-
 export function registrationsFor(race) {
-  return Array.from({ length: race.registered }, (_, index) => {
-    const member = horsePool[index % horsePool.length]
-    return {
-      ...member,
-      approval: index % 4 === 3 ? 'Chờ duyệt' : 'Đã duyệt',
-    }
-  })
+  return []
 }
 
+/** @deprecated Dùng useRaceResults / fetchRaceResults — không còn mock */
 export function resultsFor(race) {
-  if (Array.isArray(race.results) && race.results.length) {
+  if (Array.isArray(race?.results) && race.results.length) {
     return race.results
       .filter(Boolean)
       .map((item, index) => ({
@@ -23,11 +16,7 @@ export function resultsFor(race) {
         ...item,
       }))
   }
-  return registrationsFor(race).map((member, index) => ({
-    ...member,
-    position: index + 1,
-    time: `01:${String(12 + index).padStart(2, '0')}.${String(24 + index * 3).padStart(2, '0')}`,
-  }))
+  return []
 }
 
 const legacyPrizeNames = {
@@ -71,8 +60,20 @@ export function formatVnd(value) {
 }
 
 export function toneForStatus(status) {
+  if (!status) return 'blue'
   if (status.includes('mở') || status.includes('Mở')) return 'gold'
   if (status.includes('diễn') || status.includes('đua')) return 'green'
   if (status.includes('kết thúc')) return 'purple'
+  if (status.includes('kết quả')) return 'green'
   return 'blue'
+}
+
+/** Admin hiển thị trạng thái cuộc đua theo giải (Cài đặt), không theo RESULT_CONFIRMED của trọng tài */
+export function getAdminRaceDisplayStatus(race, tournament) {
+  const tournamentCode = tournament?.statusCode
+  if (tournamentCode === 'ONGOING') return tournament?.status || 'Đang diễn ra'
+  if (tournamentCode === 'COMPLETED') return tournament?.status || 'Đã kết thúc'
+  if (tournamentCode === 'CANCELLED') return 'Đã hủy'
+  if (tournamentCode === 'SCHEDULED') return tournament?.status || 'Đã lên lịch'
+  return race?.status ?? '—'
 }

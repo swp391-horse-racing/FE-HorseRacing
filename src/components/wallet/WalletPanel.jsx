@@ -40,6 +40,7 @@ const TX_LABELS = {
   ITEM_SALE: { label: 'Bán vật phẩm', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
   REFUND: { label: 'Hoàn tiền', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
   ADJUSTMENT: { label: 'Điều chỉnh', color: 'text-sky-300', bg: 'bg-sky-500/15' },
+  REFEREE_PAYOUT: { label: 'Lương trọng tài', color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
 }
 
 const TX_ICONS = {
@@ -58,6 +59,7 @@ const TX_ICONS = {
   ITEM_SALE: Coins,
   REFUND: Coins,
   ADJUSTMENT: HelpCircle,
+  REFEREE_PAYOUT: Coins,
 }
 
 const DIRECTION_LABELS = {

@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Flag } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { GhostButton, GlassCard } from '@/pages/admin/AdminLayout'
+import { tournamentService } from '@/services/tournamentService'
+import { mapTournamentForJudges } from '@/utils/judgeTournamentUtils'
 import RaceListPanel from './RaceListPanel'
 import JudgeAssigner from './JudgeAssigner'
 
-export default function TournamentJudgeWorkspace({ tournament, onBack }) {
+export default function TournamentJudgeWorkspace({ tournament, onBack, onTournamentUpdated }) {
   const [activeRaceId, setActiveRaceId] = useState(tournament.races[0]?.id ?? '')
   const [, forceRender] = useState(0)
 
@@ -17,6 +19,25 @@ export default function TournamentJudgeWorkspace({ tournament, onBack }) {
     if (!activeRace) return
     activeRace.judges = nextAssignments
     forceRender((value) => value + 1)
+  }
+
+  const handleAssigned = async ({ refereeId }) => {
+    if (!activeRace || !refereeId) return
+
+    activeRace.raw = {
+      ...(activeRace.raw ?? {}),
+      refereeId: Number(refereeId),
+    }
+    forceRender((value) => value + 1)
+
+    if (!onTournamentUpdated) return
+
+    try {
+      const response = await tournamentService.getAdminTournament(tournament.id)
+      onTournamentUpdated(mapTournamentForJudges(response.data))
+    } catch {
+      // Giữ cập nhật cục bộ nếu không tải lại được chi tiết giải.
+    }
   }
 
   return (
@@ -55,6 +76,7 @@ export default function TournamentJudgeWorkspace({ tournament, onBack }) {
                 tournament={tournament}
                 race={activeRace}
                 onChangeJudges={updateRaceJudges}
+                onAssigned={handleAssigned}
               />
             ) : null}
           </div>

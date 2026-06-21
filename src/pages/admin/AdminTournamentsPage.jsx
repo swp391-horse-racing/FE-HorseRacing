@@ -361,9 +361,9 @@ function TournamentTable({ tournaments: rows }) {
 
 function CardMeta({ icon: Icon, text, className = "" }) {
   return (
-    <span className={`flex min-w-0 items-center gap-3 ${className}`}>
+    <span className={`flex min-w-0 items-start gap-3 ${className}`} title={text}>
       <Icon className="h-5 w-5 shrink-0 text-[#dda50e]" />
-      <span className="truncate">{text}</span>
+      <span className="text-sm leading-snug break-words">{text}</span>
     </span>
   );
 }

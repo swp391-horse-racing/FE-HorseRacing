@@ -2,11 +2,11 @@ import { Plus } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import { primaryButton } from "@/components/ui/styles";
-import { toneForStatus } from "../utils";
+import { toneForStatus, getAdminRaceDisplayStatus } from "../utils";
 import { formatDistance } from "./helpers";
 import { formatDisplayDate } from "@/utils/dateFormat";
 
-export default function RaceList({ races, selectedId, onAdd, onSelect }) {
+export default function RaceList({ races, selectedId, onAdd, onSelect, tournament }) {
   return (
     <Card className="h-fit shrink-0 p-5">
       <div className="mb-5 flex items-center justify-between">
@@ -60,7 +60,9 @@ export default function RaceList({ races, selectedId, onAdd, onSelect }) {
                     <div className="text-xs text-white/50">{scheduleText}</div>
                   </div>
                 </div>
-                <Badge tone={toneForStatus(race.status)}>{race.status}</Badge>
+                <Badge tone={toneForStatus(getAdminRaceDisplayStatus(race, tournament))}>
+                  {getAdminRaceDisplayStatus(race, tournament)}
+                </Badge>
               </div>
 
               <div className="mb-3 flex justify-between text-xs text-white/55">

@@ -13,7 +13,7 @@ import { GlassCard, StatCard, Pill } from '@/pages/admin/AdminLayout';
 import { useRefereeViolations } from './refereeViolationsMock';
 import { useAuthStore } from '@/store/authStore';
 import { useRefereeRaces } from './useRefereeRaces';
-import { isRaceToday, missingBe, raceStatusTone } from '@/utils/refereeRaceUtils';
+import { isRaceToday, missingBe, getRefereeRaceStatusTone } from '@/utils/refereeRaceUtils';
 
 export function RefereeDashboard() {
   const user = useAuthStore((s) => s.user);
@@ -84,7 +84,7 @@ export function RefereeDashboard() {
                             {typeof r.no === 'number' ? `R${r.no}` : r.no}
                           </span>
                           <h3 className="font-bold text-white text-sm truncate">{r.name}</h3>
-                          <Pill tone={raceStatusTone(r.status)}>{r.statusLabel}</Pill>
+                          <Pill tone={getRefereeRaceStatusTone(r)}>{r.statusLabel}</Pill>
                         </div>
                         <div className="text-[11px] text-white/50 truncate">
                           {r.tournamentName} · {r.distance} · {r.track}

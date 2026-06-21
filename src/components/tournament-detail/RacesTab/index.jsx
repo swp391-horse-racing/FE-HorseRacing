@@ -377,6 +377,7 @@ export default function RacesTab({ tournament, setTournament, onChangeTab }) {
 
       <RaceList
         races={tournament.races}
+        tournament={tournament}
         selectedId={selected.id}
         onAdd={addRace}
         onSelect={setSelectedId}
@@ -417,14 +418,10 @@ export default function RacesTab({ tournament, setTournament, onChangeTab }) {
           <RaceRegistrations race={selected} tournament={tournament} />
         )}
         {panel === "referees" && (
-          <RaceReferees
-            race={selected}
-            tournament={tournament}
-            setTournament={setTournament}
-          />
+          <RaceReferees race={selected} tournament={tournament} />
         )}
         {panel === "gates" && <RaceGates race={selected} active={panel === "gates"} />}
-        {panel === "race-results" && <RaceResults race={selected} />}
+        {panel === "race-results" && <RaceResults race={selected} tournament={tournament} />}
       </div>
     </div>
   );

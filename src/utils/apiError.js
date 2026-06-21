@@ -34,6 +34,8 @@ const API_MESSAGE_VI = {
   'Only scheduled races can be started': 'Chỉ có thể bắt đầu cuộc đua ở trạng thái Đã lên lịch',
   'Race does not have enough checked-in participants': 'Chưa đủ ngựa check-in để bắt đầu cuộc đua',
   'Only ongoing races can be finalized': 'Chỉ có thể chốt kết quả khi cuộc đua đang diễn ra',
+  'Race result has already been finalized':
+    'Kết quả đã được khóa. Admin cần bật giải "Đang diễn ra" để trọng tài cập nhật lại.',
   'Race results are required': 'Vui lòng nhập kết quả cuộc đua',
   'Participant does not belong to this race': 'Ngựa không thuộc cuộc đua này',
   'Jockey already accepted an invitation for this race or an overlapping race':

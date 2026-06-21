@@ -10,8 +10,8 @@ const RACE_STATUS_VI = {
   OPEN_REGISTRATION: 'Mở đăng ký',
   REGISTRATION_CLOSED: 'Đóng đăng ký',
   SCHEDULED: 'Sắp diễn ra',
-  ONGOING: 'Đang đua',
-  RESULT_CONFIRMED: 'Đã kết thúc',
+  ONGOING: 'Đang diễn ra',
+  RESULT_CONFIRMED: 'Đã chốt kết quả',
   CANCELLED: 'Đã hủy',
 }
 
@@ -36,6 +36,94 @@ export function raceTabBucket(status) {
   return 'upcoming'
 }
 
+/** Tab/nhãn trọng tài — theo trạng thái giải (admin), không dùng "Đã chốt kết quả" */
+export function getRefereeRaceTabBucket(race) {
+  const tournament = normalizeTournamentStatusCode(race?.tournamentStatus)
+  if (tournament === 'COMPLETED') return 'completed'
+  if (tournament === 'ONGOING') return 'ongoing'
+  if (tournament === 'CANCELLED') return 'cancelled'
+  const raceStatus = normalizeRaceStatusCode(race?.status)
+  if (raceStatus === 'ONGOING' || raceStatus === 'RESULT_CONFIRMED') return 'ongoing'
+  if (raceStatus === 'CANCELLED') return 'cancelled'
+  return 'upcoming'
+}
+
+export function getRefereeRaceDisplayLabel(race) {
+  const tournament = normalizeTournamentStatusCode(race?.tournamentStatus)
+  if (tournament === 'COMPLETED') return 'Đã kết thúc'
+  if (tournament === 'ONGOING') return 'Đang diễn ra'
+  const raceStatus = normalizeRaceStatusCode(race?.status)
+  if (raceStatus === 'ONGOING' || raceStatus === 'RESULT_CONFIRMED') return 'Đang diễn ra'
+  if (raceStatus === 'SCHEDULED') return 'Sắp diễn ra'
+  if (raceStatus === 'CANCELLED') return 'Đã hủy'
+  return raceStatusLabel(raceStatus)
+}
+
+export function getRefereeRaceStatusTone(race) {
+  const bucket = getRefereeRaceTabBucket(race)
+  if (bucket === 'ongoing') return 'green'
+  if (bucket === 'completed') return 'purple'
+  if (bucket === 'cancelled') return 'gray'
+  return 'blue'
+}
+
+/** Chuẩn hóa mã trạng thái cuộc đua từ API (string/object/nhãn tiếng Việt) */
+const RACE_STATUS_ALIASES = {
+  'ĐANG DIỄN RA': 'ONGOING',
+  'ĐANG ĐUA': 'ONGOING',
+  'SẮP DIỄN RA': 'SCHEDULED',
+  'ĐÃ LÊN LỊCH': 'SCHEDULED',
+  'ĐÃ CHỐT KẾT QUẢ': 'RESULT_CONFIRMED',
+  'ĐÃ HỦY': 'CANCELLED',
+}
+
+const TOURNAMENT_STATUS_ALIASES = {
+  'ĐANG DIỄN RA': 'ONGOING',
+  'ĐÃ KẾT THÚC': 'COMPLETED',
+  'ĐÃ LÊN LỊCH': 'SCHEDULED',
+  'ĐANG MỞ ĐĂNG KÝ': 'OPEN_REGISTRATION',
+  'ĐÃ ĐÓNG ĐĂNG KÝ': 'REGISTRATION_CLOSED',
+}
+
+export function normalizeRaceStatusCode(status) {
+  if (!status) return ''
+  if (typeof status === 'string') {
+    const upper = status.trim().toUpperCase()
+    if (RACE_STATUS_ALIASES[upper]) return RACE_STATUS_ALIASES[upper]
+    return upper
+  }
+  if (typeof status === 'object') {
+    return normalizeRaceStatusCode(status.code ?? status.name ?? status.status)
+  }
+  return String(status).trim().toUpperCase()
+}
+
+export function normalizeTournamentStatusCode(status) {
+  if (!status) return ''
+  if (typeof status === 'string') {
+    const upper = status.trim().toUpperCase()
+    if (TOURNAMENT_STATUS_ALIASES[upper]) return TOURNAMENT_STATUS_ALIASES[upper]
+    return upper
+  }
+  if (typeof status === 'object') {
+    return normalizeTournamentStatusCode(status.code ?? status.name ?? status.status)
+  }
+  return String(status).trim().toUpperCase()
+}
+
+/** Trọng tài sửa kết quả khi admin bật giải "Đang diễn ra"; khóa khi giải "Đã kết thúc" */
+export function canRefereeEditRaceResults(raceStatus, tournamentStatus) {
+  const tournament = normalizeTournamentStatusCode(tournamentStatus)
+  const race = normalizeRaceStatusCode(raceStatus)
+  if (tournament === 'COMPLETED' || tournament === 'CANCELLED') return false
+  if (race === 'CANCELLED') return false
+  if (tournament === 'ONGOING') return true
+  if (!tournament && (race === 'ONGOING' || race === 'SCHEDULED' || race === 'RESULT_CONFIRMED')) {
+    return true
+  }
+  return false
+}
+
 export function raceStatusTone(status) {
   const bucket = raceTabBucket(status)
   if (bucket === 'upcoming') return 'blue'
@@ -51,14 +139,25 @@ export function participantStatusLabel(status) {
 }
 
 export function checkinTone(status) {
-  if (status === 'CHECKED_IN') return 'green'
+  if (status === 'CHECKED_IN' || status === 'FINISHED' || status === 'DNF' || status === 'DISQUALIFIED') {
+    return 'green'
+  }
   if (status === 'REGISTERED') return 'gold'
   if (status === 'ABSENT') return 'gray'
-  if (status === 'DISQUALIFIED') return 'purple'
-  return 'red'
+  return 'gray'
 }
 
-export const REFEREE_CHECK_IN_STATUSES = ['CHECKED_IN', 'ABSENT', 'DISQUALIFIED']
+/** Nhãn check-in — không hiển thị trạng thái kết quả (Hoàn thành, Loại...) */
+export function checkInDisplayLabel(status) {
+  if (status === 'CHECKED_IN' || status === 'FINISHED' || status === 'DNF' || status === 'DISQUALIFIED') {
+    return 'Có mặt'
+  }
+  if (status === 'ABSENT') return 'Vắng mặt'
+  if (status === 'REGISTERED') return 'Chờ'
+  return 'Chờ'
+}
+
+export const REFEREE_CHECK_IN_STATUSES = ['CHECKED_IN', 'ABSENT']
 
 export function canRefereeCheckIn(raceStatus) {
   return raceStatus === 'SCHEDULED'
@@ -155,6 +254,30 @@ export async function buildTournamentNameMap(tournamentIds = []) {
   return nameById
 }
 
+export async function buildTournamentStatusMap(tournamentIds = []) {
+  const wanted = new Set(tournamentIds.filter(Boolean).map((id) => String(id)))
+  if (!wanted.size) return new Map()
+
+  const { tournamentService } = await import('@/services/tournamentService')
+  const statusById = new Map()
+
+  await Promise.all(
+    [...wanted].map(async (id) => {
+      try {
+        const { data, raw } = await tournamentService.getPublicTournament(id)
+        statusById.set(
+          id,
+          normalizeTournamentStatusCode(raw?.status ?? data?.statusCode ?? data?.status),
+        )
+      } catch {
+        // giải không public hoặc không tìm thấy
+      }
+    }),
+  )
+
+  return statusById
+}
+
 export function parseRulesLines(rulesText) {
   const text = String(rulesText || '').trim()
   if (!text) return []
@@ -189,15 +312,21 @@ export async function fetchRaceRules(tournamentId) {
   }
 }
 
-export function mapRaceFromApi(raw, index = 0) {
+export function mapRaceFromApi(raw, index = 0, { tournamentStatus = '' } = {}) {
   const participantCount = Number(raw?.participantCount ?? 0)
   const checkedInCount = Number(raw?.checkedInCount ?? 0)
   const tournamentName = raw?.tournamentName?.trim()
+  const raceCore = {
+    id: raw?.id,
+    status: normalizeRaceStatusCode(raw?.status),
+    tournamentStatus: normalizeTournamentStatusCode(tournamentStatus || raw?.tournamentStatus),
+  }
   return {
     id: raw?.id,
     raw,
     tournamentId: raw?.tournamentId,
     tournamentName: tournamentName || 'Chưa có tên giải',
+    tournamentStatus: raceCore.tournamentStatus,
     no: raw?.raceNumber || raw?.id || index + 1,
     name: raw?.name || '--',
     date: formatRaceDate(raw?.scheduledStartAt),
@@ -207,9 +336,9 @@ export function mapRaceFromApi(raw, index = 0) {
     distance: raw?.distance || '--',
     totalHorses: participantCount,
     participantCount,
-    status: raw?.status,
-    statusLabel: raceStatusLabel(raw?.status),
-    tabBucket: raceTabBucket(raw?.status),
+    status: raceCore.status,
+    statusLabel: getRefereeRaceDisplayLabel(raceCore),
+    tabBucket: getRefereeRaceTabBucket(raceCore),
     checkedInDisplay: checkedInCount,
     checkedInCount,
     winnerDisplay: raw?.winnerDisplay || '--',
@@ -235,10 +364,19 @@ export function mapParticipantFromApi(raw, index = 0) {
   }
 }
 
-/** Parse "mm:ss.cs" (VD: 01:23.45) → milliseconds */
+/** Parse race time → milliseconds. Supports MM:SS:CC, mm:ss.cs, mm:ss */
 export function parseFinishTimeToMillis(value) {
   const text = String(value ?? '').trim()
   if (!text) return 0
+
+  const colonTriple = text.match(/^(\d{2}):(\d{2}):(\d{2})$/)
+  if (colonTriple) {
+    const minutes = Number(colonTriple[1])
+    const seconds = Number(colonTriple[2])
+    const centis = Number(colonTriple[3])
+    if (seconds > 59 || centis > 99) return 0
+    return minutes * 60_000 + seconds * 1_000 + centis * 10
+  }
 
   const full = text.match(/^(\d+):(\d{1,2})\.(\d{1,2})$/)
   if (full) {
@@ -257,12 +395,143 @@ export function parseFinishTimeToMillis(value) {
   return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric) : 0
 }
 
+export function sanitizeRaceTimeInput(value) {
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 6)
+  if (!digits) return ''
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}:${digits.slice(2)}`
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4)}:${digits.slice(4)}`
+}
+
+export function formatRaceTimeOnBlur(value) {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  if (!digits) return ''
+  const padded = digits.padEnd(6, '0').slice(0, 6)
+  return `${padded.slice(0, 2)}:${padded.slice(2, 4)}:${padded.slice(4, 6)}`
+}
+
+export function isCompleteRaceTime(value) {
+  return /^\d{2}:\d{2}:\d{2}$/.test(String(value ?? '').trim())
+}
+
+export function isValidRaceTime(value) {
+  const text = String(value ?? '').trim()
+  if (!isCompleteRaceTime(text)) return false
+  const [minutes, seconds, centis] = text.split(':').map((part) => Number(part))
+  if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || !Number.isFinite(centis)) {
+    return false
+  }
+  return minutes >= 0 && seconds >= 0 && seconds <= 59 && centis >= 0 && centis <= 99
+}
+
+export function recompactFinishedRanks(rows) {
+  const list = Array.isArray(rows) ? rows : []
+  const finished = [...list.filter((row) => !row.dq)].sort((a, b) => a.position - b.position)
+  const rankById = new Map(finished.map((row, index) => [String(row.id), index + 1]))
+  return list.map((row) =>
+    row.dq ? row : { ...row, position: rankById.get(String(row.id)) ?? row.position },
+  )
+}
+
+/** Payload gửi BE — ngựa loại chỉ gửi lý do, không có rank */
+export function buildRaceFinalizePayload(rows) {
+  return (Array.isArray(rows) ? rows : []).map((row) => {
+    if (row.dq) {
+      const note = String(row.dqReason ?? '').trim() || undefined
+      return {
+        participantId: row.participantId,
+        status: 'DISQUALIFIED',
+        finishTimeMillis: 0,
+        note,
+      }
+    }
+    return {
+      participantId: row.participantId,
+      rank: row.position,
+      finishTimeMillis: parseFinishTimeToMillis(row.time),
+      status: 'FINISHED',
+    }
+  })
+}
+
+function defaultResultRow(horse, index, startPositions) {
+  return {
+    id: horse.id,
+    participantId: horse.participantId,
+    horse: horse.horse,
+    owner: horse.owner,
+    jockey: horse.jockey,
+    startPos: getAssignedGate(horse, startPositions),
+    position: index + 1,
+    time: '',
+    dqReason: '',
+    dq: false,
+  }
+}
+
+export function buildResultRowsFromHorses(
+  horses,
+  startPositions = {},
+  { results = null, draftRows = null } = {},
+) {
+  const horseList = Array.isArray(horses) ? horses : []
+  const safeStartPositions =
+    startPositions && typeof startPositions === 'object' && !Array.isArray(startPositions)
+      ? startPositions
+      : {}
+
+  if (Array.isArray(results) && results.length) {
+    const resultByParticipant = new Map(
+      results.map((item) => [String(item.participantId), item]),
+    )
+    return horseList.map((horse, index) => {
+      const result = resultByParticipant.get(String(horse.participantId ?? horse.id))
+      const startPos = getAssignedGate(horse, safeStartPositions)
+      if (!result) return defaultResultRow(horse, index, safeStartPositions)
+
+      const dq = result.status === 'DISQUALIFIED'
+      return {
+        id: horse.id,
+        participantId: horse.participantId ?? result.participantId,
+        horse: horse.horse ?? result.horseName,
+        owner: horse.owner ?? result.ownerUsername,
+        jockey: horse.jockey ?? result.jockeyUsername,
+        startPos,
+        position: dq ? 0 : (result.rank ?? index + 1),
+        time: dq ? '' : formatMillisAsRaceTime(result.finishTimeMillis),
+        dqReason: dq ? (result.note ?? '') : '',
+        dq,
+      }
+    })
+  }
+
+  if (Array.isArray(draftRows) && draftRows.length) {
+    const draftById = new Map(draftRows.map((row) => [String(row.id), row]))
+    return horseList.map((horse, index) => {
+      const draft = draftById.get(String(horse.id))
+      const startPos = getAssignedGate(horse, safeStartPositions)
+      if (!draft) return defaultResultRow(horse, index, safeStartPositions)
+      return {
+        ...draft,
+        participantId: horse.participantId,
+        horse: horse.horse,
+        owner: horse.owner,
+        jockey: horse.jockey,
+        startPos,
+        dqReason: draft.dqReason ?? draft.penalty ?? '',
+      }
+    })
+  }
+
+  return horseList.map((horse, index) => defaultResultRow(horse, index, safeStartPositions))
+}
+
 export function formatMillisAsRaceTime(ms) {
   const total = Math.max(0, Number(ms) || 0)
   const minutes = Math.floor(total / 60_000)
   const seconds = Math.floor((total % 60_000) / 1_000)
   const centis = Math.floor((total % 1_000) / 10)
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(centis).padStart(2, '0')}`
 }
 
 export function participantKey(id) {
@@ -330,4 +599,30 @@ export function updateGateMap(positions = {}, horseId, nextGate, horses = []) {
 
 export function findHorseByGate(horses = [], positions = {}, gate) {
   return horses.find((horse) => getAssignedGate(horse, positions) === gate) ?? null
+}
+
+export function getResultsDraftStorageKey(raceId) {
+  return `referee-race-results-draft:${raceId}`
+}
+
+export function loadResultsDraft(raceId) {
+  if (!raceId) return null
+  try {
+    const raw = sessionStorage.getItem(getResultsDraftStorageKey(raceId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+export function saveResultsDraft(raceId, rows) {
+  if (!raceId) return
+  sessionStorage.setItem(getResultsDraftStorageKey(raceId), JSON.stringify(rows))
+}
+
+export function clearResultsDraft(raceId) {
+  if (!raceId) return
+  sessionStorage.removeItem(getResultsDraftStorageKey(raceId))
 }

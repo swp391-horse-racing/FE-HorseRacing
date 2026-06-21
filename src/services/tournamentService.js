@@ -27,6 +27,7 @@ const STATUS_LABELS = {
   REGISTRATION_CLOSED: 'Đã đóng đăng ký',
   SCHEDULED: 'Đã lên lịch',
   ONGOING: 'Đang diễn ra',
+  RESULT_CONFIRMED: 'Đã có kết quả',
   COMPLETED: 'Đã kết thúc',
   CANCELLED: 'Đã hủy',
 }
@@ -38,6 +39,7 @@ const STATUS_TONES = {
   REGISTRATION_CLOSED: 'gold',
   SCHEDULED: 'blue',
   ONGOING: 'purple',
+  RESULT_CONFIRMED: 'green',
   COMPLETED: 'green',
   CANCELLED: 'red',
 }
@@ -88,6 +90,11 @@ function mapRacePrizes(prizes = []) {
 function mapRace(race, index) {
   const scheduledStartAt = race?.scheduledStartAt ?? ''
   const scheduledEndAt = race?.scheduledEndAt ?? ''
+  const venueLabel =
+    race?.venueName?.trim()
+    || race?.venueAddress?.trim()
+    || race?.provinceName?.trim()
+    || ''
 
   return {
     id: String(race?.id ?? index + 1),
@@ -103,7 +110,7 @@ function mapRace(race, index) {
     venueAddress: race?.venueAddress ?? '',
     provinceId: race?.provinceId == null ? '' : String(race.provinceId),
     provinceName: race?.provinceName ?? '',
-    track: race?.track ?? 'Chưa cập nhật',
+    track: venueLabel || 'Chưa có sân',
     surface: race?.surface ?? 'Chưa cập nhật',
     category: race?.category ?? 'Open',
     minHorses: Number(race?.minParticipants ?? 0),

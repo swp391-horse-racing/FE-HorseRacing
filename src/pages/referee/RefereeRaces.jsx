@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Flag,
@@ -15,7 +15,7 @@ import {
 import { RefereeLayout } from './RefereeLayout';
 import { GlassCard, Pill, TextInput, Select } from '@/pages/admin/AdminLayout';
 import { useRefereeRaces } from './useRefereeRaces';
-import { raceStatusTone } from '@/utils/refereeRaceUtils';
+import { getRefereeRaceStatusTone } from '@/utils/refereeRaceUtils';
 
 const TABS = [
   { key: 'upcoming', label: 'Sắp diễn ra' },
@@ -28,6 +28,14 @@ export function RefereeRaces() {
   const [tab, setTab] = useState('upcoming');
   const [q, setQ] = useState('');
   const [view, setView] = useState('grid');
+
+  useEffect(() => {
+    if (loading || !races.length) return;
+    const ongoingCount = races.filter((r) => r.tabBucket === 'ongoing').length;
+    const completedCount = races.filter((r) => r.tabBucket === 'completed').length;
+    if (ongoingCount > 0) setTab('ongoing');
+    else if (completedCount > 0 && ongoingCount === 0) setTab('completed');
+  }, [loading, races]);
 
   const filtered = useMemo(
     () =>
@@ -118,7 +126,7 @@ export function RefereeRaces() {
                     <span className="text-[10px] font-bold text-[#D4A017] bg-[#D4A017]/15 px-2 py-1 rounded-md border border-[#D4A017]/30">
                       {typeof r.no === 'number' ? `R${r.no}` : r.no}
                     </span>
-                    <Pill tone={raceStatusTone(r.status)}>{r.statusLabel}</Pill>
+                    <Pill tone={getRefereeRaceStatusTone(r)}>{r.statusLabel}</Pill>
                   </div>
                   <h3 className="font-bold text-white text-base leading-tight">{r.name}</h3>
                   <p className="text-[11px] text-[#D4A017]/80 mt-1">{r.tournamentName}</p>
@@ -188,7 +196,7 @@ export function RefereeRaces() {
                       </span>
                     </td>
                     <td className="px-6 py-3 text-center">
-                      <Pill tone={raceStatusTone(r.status)}>{r.statusLabel}</Pill>
+                      <Pill tone={getRefereeRaceStatusTone(r)}>{r.statusLabel}</Pill>
                     </td>
                     <td className="px-6 py-3 text-right">
                       <Link

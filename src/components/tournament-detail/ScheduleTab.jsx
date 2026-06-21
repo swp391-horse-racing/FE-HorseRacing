@@ -2,7 +2,7 @@ import { CalendarRange, MapPin, Route, Timer } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import { Meta, PanelHeader } from '@/components/ui/Panel'
-import { formatVnd, getTotalPrize, toneForStatus } from './utils'
+import { formatVnd, getTotalPrize, getAdminRaceDisplayStatus, toneForStatus } from './utils'
 import { formatDisplayDate } from '@/utils/dateFormat'
 
 export default function ScheduleTab({ tournament }) {
@@ -24,12 +24,14 @@ export default function ScheduleTab({ tournament }) {
               <div className="mb-2 flex items-center gap-3">
                 <span className="font-bold text-[#dda50e]">R{race.no}</span>
                 <span className="text-lg font-bold">{race.name}</span>
-                <Badge tone={toneForStatus(race.status)}>{race.status}</Badge>
+                <Badge tone={toneForStatus(getAdminRaceDisplayStatus(race, tournament))}>
+                  {getAdminRaceDisplayStatus(race, tournament)}
+                </Badge>
               </div>
               <div className="flex flex-wrap gap-5 text-sm text-white/55">
-                <Meta icon={Route} text={race.distance} />
+                <Meta icon={Route} text={race.distance || 'Chưa có cự ly'} />
                 <Meta icon={MapPin} text={race.track} />
-                <Meta icon={Timer} text={`Check-in ${race.checkIn}`} />
+                <Meta icon={Timer} text={`${race.time} – ${race.endTime || '--:--'}`} />
               </div>
             </div>
             <Badge tone="purple">{formatVnd(getTotalPrize(race))}</Badge>

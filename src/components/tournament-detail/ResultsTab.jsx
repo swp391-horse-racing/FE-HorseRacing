@@ -3,60 +3,118 @@ import { ArrowRight } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import { SimpleTable } from '@/components/ui/Panel'
-import { formatVnd, getPrizeAmountByRank, getTotalPrize, resultsFor, toneForStatus } from './utils'
+import { formatVnd, getPrizeAmountByRank, getTotalPrize, getAdminRaceDisplayStatus, toneForStatus } from './utils'
 import { formatDisplayDate } from '@/utils/dateFormat'
+import { useRaceResults } from '@/services/raceResultService'
+
+function RaceResultCard({ race, tournament, open, onToggle }) {
+  const { rankedRows, disqualifiedRows, loading, error } = useRaceResults(race.id)
+  const champion = rankedRows[0]?.horse ?? 'Chưa có'
+
+  const prizeFor = (item) => {
+    if (item.prizeAmount > 0) return formatVnd(item.prizeAmount)
+    if (item.position != null && item.position < 4) {
+      return formatVnd(getPrizeAmountByRank(race, item.position))
+    }
+    return '—'
+  }
+
+  let body = null
+  if (open && loading) {
+    body = (
+      <p className="border-t border-white/10 px-6 py-8 text-center text-white/55">
+        Đang tải kết quả...
+      </p>
+    )
+  } else if (open && error) {
+    body = (
+      <p className="border-t border-white/10 px-6 py-8 text-center text-red-200/90">{error}</p>
+    )
+  } else if (open && rankedRows.length > 0) {
+    body = (
+      <>
+        <SimpleTable
+          headers={['Hạng', 'Ngựa', 'Chủ ngựa', 'Jockey', 'Thời gian', 'Thưởng']}
+          rows={rankedRows.map((item) => [
+            `#${item.position}`,
+            item.horse,
+            item.owner,
+            item.jockey,
+            item.time,
+            prizeFor(item),
+          ])}
+        />
+        {disqualifiedRows.length > 0 && (
+          <div className="border-t border-white/10 px-6 py-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/45">
+              Ngựa bị loại (không xếp hạng)
+            </p>
+            <ul className="space-y-2">
+              {disqualifiedRows.map((item) => (
+                <li
+                  key={item.participantId ?? item.id}
+                  className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-2.5 text-sm"
+                >
+                  <span className="font-semibold text-white">{item.horse}</span>
+                  <span className="text-white/50"> · {item.jockey}</span>
+                  {item.note ? (
+                    <span className="mt-1 block text-xs text-red-200/90">Lý do: {item.note}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </>
+    )
+  } else if (open) {
+    body = (
+      <p className="border-t border-white/10 px-6 py-8 text-center text-white/55">
+        Chưa có kết quả cho cuộc đua này.
+      </p>
+    )
+  }
+  return (
+    <Card className="overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-5 p-6 text-left transition hover:bg-white/[0.03]"
+      >
+        <span className="rounded-xl bg-[#dda50e] px-4 py-3 font-bold">R{race.no}</span>
+        <span className="flex-1">
+          <span className="mb-2 flex items-center gap-3">
+            <span className="text-xl font-bold">{race.name}</span>
+            <Badge tone={toneForStatus(getAdminRaceDisplayStatus(race, tournament))}>
+              {getAdminRaceDisplayStatus(race, tournament)}
+            </Badge>
+          </span>
+          <span className="text-sm text-white/55">
+            {formatDisplayDate(race.date)} · {race.time} · Quán quân: {champion}
+          </span>
+        </span>
+        <span className="font-bold text-[#dda50e]">{formatVnd(getTotalPrize(race))}</span>
+        <ArrowRight className={`h-5 w-5 text-white/45 transition ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {body}
+    </Card>
+  )
+}
 
 export default function ResultsTab({ tournament }) {
   const [expanded, setExpanded] = useState(tournament.races[0]?.id)
 
   return (
     <div className="space-y-4">
-      {tournament.races.map((race) => {
-        const open = expanded === race.id
-        const results = resultsFor(race)
-        const champion = results[0]?.horse ?? 'Chưa có'
-
-        return (
-          <Card key={race.id} className="overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setExpanded(open ? '' : race.id)}
-              className="flex w-full items-center gap-5 p-6 text-left transition hover:bg-white/[0.03]"
-            >
-              <span className="rounded-xl bg-[#dda50e] px-4 py-3 font-bold">R{race.no}</span>
-              <span className="flex-1">
-                <span className="mb-2 flex items-center gap-3">
-                  <span className="text-xl font-bold">{race.name}</span>
-                  <Badge tone={toneForStatus(race.status)}>{race.status}</Badge>
-                </span>
-                <span className="text-sm text-white/55">
-                  {formatDisplayDate(race.date)} · {race.time} · Quán quân: {champion}
-                </span>
-              </span>
-              <span className="font-bold text-[#dda50e]">{formatVnd(getTotalPrize(race))}</span>
-              <ArrowRight className={`h-5 w-5 text-white/45 transition ${open ? 'rotate-90' : ''}`} />
-            </button>
-            {open &&
-              (results.length ? (
-                <SimpleTable
-                  headers={['Hạng', 'Ngựa', 'Chủ ngựa', 'Jockey', 'Thời gian', 'Thưởng']}
-                  rows={results.map((item) => [
-                    `#${item.position}`,
-                    item.horse,
-                    item.owner,
-                    item.jockey,
-                    item.time,
-                    item.position < 4 ? formatVnd(getPrizeAmountByRank(race, item.position)) : '—',
-                  ])}
-                />
-              ) : (
-                <p className="border-t border-white/10 px-6 py-8 text-center text-white/55">
-                  Chưa có kết quả cho cuộc đua này.
-                </p>
-              ))}
-          </Card>
-        )
-      })}
+      {tournament.races.map((race) => (
+        <RaceResultCard
+          key={race.id}
+          race={race}
+          tournament={tournament}
+          open={expanded === race.id}
+          onToggle={() => setExpanded(expanded === race.id ? '' : race.id)}
+        />
+      ))}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { RefereeLayout } from './RefereeLayout'
 import WalletPanel from '@/components/wallet/WalletPanel'
+import RefereeSalaryPanel from '@/components/referee/RefereeSalaryPanel'
 
 export function RefereeWallet() {
   return (
@@ -7,6 +8,7 @@ export function RefereeWallet() {
       title="Ví của tôi · Trọng tài"
       subtitle="Nhận tiền lương định kỳ và phụ cấp công tác từ hệ thống"
     >
+      <RefereeSalaryPanel />
       <WalletPanel
         walletMode="user"
         title="Ví trọng tài"

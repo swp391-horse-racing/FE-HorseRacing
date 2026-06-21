@@ -84,6 +84,7 @@ export default function AdminJudgesPage() {
       <TournamentJudgeWorkspace
         tournament={selectedTournament}
         onBack={() => setTournamentId(null)}
+        onTournamentUpdated={setSelectedTournament}
       />
     )
   }

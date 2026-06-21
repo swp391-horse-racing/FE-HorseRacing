@@ -29,7 +29,7 @@ const STATUS_TRANSITIONS = {
   OPEN_REGISTRATION: ['OPEN_REGISTRATION', 'REGISTRATION_CLOSED'],
   REGISTRATION_CLOSED: ['REGISTRATION_CLOSED', 'SCHEDULED'],
   SCHEDULED: ['SCHEDULED', 'ONGOING'],
-  ONGOING: ['ONGOING'],
+  ONGOING: ['ONGOING', 'COMPLETED'],
   COMPLETED: ['COMPLETED'],
   CANCELLED: ['CANCELLED'],
 }
@@ -126,10 +126,19 @@ function hasBaseFieldChanges(tournament, draft) {
   )
 }
 
-function getStatusTransitionError(currentStatus, nextStatus) {
+function getStatusTransitionError(currentStatus, nextStatus, tournament = null) {
   const allowed = STATUS_TRANSITIONS[currentStatus] || [currentStatus]
   if (!allowed.includes(nextStatus)) {
     return 'Không thể chuyển sang trạng thái này từ trạng thái hiện tại'
+  }
+  if (currentStatus === 'ONGOING' && nextStatus === 'COMPLETED') {
+    const races = Array.isArray(tournament?.races) ? tournament.races : []
+    const pending = races.filter(
+      (race) => race?.statusCode && race.statusCode !== 'RESULT_CONFIRMED',
+    )
+    if (pending.length > 0) {
+      return `Còn ${pending.length} cuộc đua chưa ghi nhận kết quả. Trọng tài cần hoàn tất trước khi kết thúc giải.`
+    }
   }
   return ''
 }
@@ -302,7 +311,7 @@ export default function SettingsTab({ tournament, setTournament }) {
     }
 
     if (statusChanged) {
-      const statusError = getStatusTransitionError(savedStatusCodeRef.current, draft.statusCode)
+      const statusError = getStatusTransitionError(savedStatusCodeRef.current, draft.statusCode, tournament)
       if (statusError) {
         toast.error(statusError)
         return

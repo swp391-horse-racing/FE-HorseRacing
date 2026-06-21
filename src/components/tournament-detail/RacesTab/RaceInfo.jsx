@@ -13,6 +13,7 @@ import {
   shiftTimeByMinutes,
 } from "./helpers";
 import { formatDisplayDate } from "@/utils/dateFormat";
+import { getAdminRaceDisplayStatus } from "../utils";
 import {
   findRegistrationFeeOptionId,
   getRegistrationFeeByOptionId,
@@ -342,7 +343,7 @@ export default function RaceInfo({
           )}
         </Field>
         <Field label="Trạng thái" full>
-          <Input value={draft.status || "Nháp"} disabled />
+          <Input value={getAdminRaceDisplayStatus(race, tournament)} disabled />
         </Field>
       </div>
       <PanelActions

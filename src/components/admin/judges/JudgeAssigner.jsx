@@ -5,6 +5,7 @@ import { publishRaceAssignments } from '@/services/refereeAssignmentService'
 import { getApiErrorMessage } from '@/utils/apiError'
 import AssignedJudgesPanel from './AssignedJudgesPanel'
 import AvailableRefereesPanel from './AvailableRefereesPanel'
+import RefereePaymentPanel from './RefereePaymentPanel'
 
 const DEFAULT_JUDGE_ROLE = 'Trọng tài chính'
 
@@ -79,7 +80,7 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
       await refereeService.assignRaceReferee(race.id, primary.refereeId)
 
       toast.success('Đã gửi phân công trọng tài. Trọng tài có thể xem cuộc đua được giao.')
-      onAssigned?.(primary.refereeId)
+      onAssigned?.({ refereeId: primary.refereeId })
     } catch (error) {
       toast.error(getApiErrorMessage(error) || 'Không thể gửi phân công trọng tài')
     } finally {
@@ -103,6 +104,11 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
         error={refereeError}
         assignedIds={assignedIds}
         onAdd={addJudge}
+      />
+      <RefereePaymentPanel
+        tournament={tournament}
+        race={race}
+        refereesById={refereesById}
       />
     </div>
   )

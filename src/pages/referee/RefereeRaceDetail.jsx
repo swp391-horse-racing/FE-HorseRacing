@@ -14,11 +14,11 @@ import {
   CheckCircle2,
   XCircle,
   Ban,
-  AlertOctagon,
   Upload,
   Camera,
   FileText,
   Plus,
+  Play,
   Send,
   Crown,
   Medal,
@@ -39,21 +39,37 @@ import { refereeService } from '@/services/refereeService';
 import { getApiErrorMessage } from '@/utils/apiError';
 import {
   checkinTone,
+  checkInDisplayLabel,
   canRefereeCheckIn,
   getRefereeCheckInBlockedMessage,
   findHorseByGate,
   getAssignedGate,
   mapParticipantFromApi,
   parseFinishTimeToMillis,
+  buildRaceFinalizePayload,
+  buildResultRowsFromHorses,
+  clearResultsDraft,
+  loadResultsDraft,
+  saveResultsDraft,
+  getRefereeRaceDisplayLabel,
+  getRefereeRaceStatusTone,
+  canRefereeEditRaceResults,
+  formatRaceTimeOnBlur,
+  isValidRaceTime,
+  isCompleteRaceTime,
+  sanitizeRaceTimeInput,
+  recompactFinishedRanks,
+  normalizeRaceStatusCode,
+  normalizeTournamentStatusCode,
   raceStatusTone,
   randomizeGateMap,
-  REFEREE_CHECK_IN_STATUSES,
   fetchRaceRules,
   parseRulesLines,
   severityTone,
   updateGateMap,
 } from '@/utils/refereeRaceUtils';
 import { useRefereeRaces } from './useRefereeRaces';
+import { tournamentService } from '@/services/tournamentService';
 // TODO: Tích hợp API Violations sau
 import { addViolation, useRefereeViolations } from './refereeViolationsMock';
 import { buildEvidenceStorageKey, saveEvidenceFile } from './violationEvidenceStore';
@@ -76,12 +92,29 @@ export function RefereeRaceDetail() {
   const { pathname } = useLocation();
   const id = pathname.split('/').filter(Boolean)[2];
   const navigate = useNavigate();
-  const { races, loading: racesLoading, error: racesError } = useRefereeRaces();
+  const { races, loading: racesLoading, error: racesError, reload: reloadRaces } = useRefereeRaces();
   const race = races.find((r) => String(r.id) === String(id));
   const [tab, setTab] = useState('overview');
   const [mgmtTab, setMgmtTab] = useState('positions');
   const [participants, setParticipants] = useState([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [startingRace, setStartingRace] = useState(false);
+
+  const reloadRacesQuiet = useCallback(() => reloadRaces({ silent: true }), [reloadRaces]);
+
+  const handleStartRace = async () => {
+    if (!id) return;
+    setStartingRace(true);
+    try {
+      await refereeService.startRace(id);
+      await reloadRaces({ silent: true });
+      toast.success('Cuộc đua đã bắt đầu — bạn có thể ghi và sửa kết quả');
+    } catch (err) {
+      toast.error(getApiErrorMessage(err) || 'Không thể bắt đầu cuộc đua');
+    } finally {
+      setStartingRace(false);
+    }
+  };
 
   const loadParticipants = useCallback(async () => {
     if (!id) return;
@@ -106,7 +139,7 @@ export function RefereeRaceDetail() {
     setMgmtTab(sub);
   };
 
-  if (racesLoading) {
+  if (racesLoading && races.length === 0) {
     return (
       <RefereeLayout title="Đang tải..." subtitle="Cuộc đua được phân công">
         <div className="text-center py-20 text-white/50 text-sm">Đang tải thông tin cuộc đua...</div>
@@ -154,13 +187,18 @@ export function RefereeRaceDetail() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <Pill tone={raceStatusTone(race.status)}>{race.statusLabel}</Pill>
+                  <Pill tone={getRefereeRaceStatusTone(race)}>{getRefereeRaceDisplayLabel(race)}</Pill>
                   <span className="text-[11px] text-white/40 font-mono">{race.id}</span>
                 </div>
                 <h2 className="text-2xl font-bold text-white">{race.name}</h2>
                 <p className="text-sm text-[#D4A017]/80 mt-0.5">{race.tournamentName}</p>
               </div>
             </div>
+            {race.status === 'SCHEDULED' && (
+              <PrimaryButton icon={Play} onClick={handleStartRace} disabled={startingRace}>
+                {startingRace ? 'Đang bắt đầu...' : 'Bắt đầu cuộc đua'}
+              </PrimaryButton>
+            )}
           </div>
           <div className="relative grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
             <MetaTile icon={Calendar} label="Thời gian" value={`${race.date} · ${race.time}`} />
@@ -200,6 +238,9 @@ export function RefereeRaceDetail() {
           onReloadParticipants={loadParticipants}
           activeTab={mgmtTab}
           setActiveTab={setMgmtTab}
+          onStartRace={handleStartRace}
+          startingRace={startingRace}
+          onReloadRace={reloadRacesQuiet}
         />
       )}
     </RefereeLayout>
@@ -361,6 +402,9 @@ function RaceManagementTab({
   onReloadParticipants,
   activeTab,
   setActiveTab,
+  onStartRace,
+  startingRace = false,
+  onReloadRace,
 }) {
   const horses = useMemo(() => (Array.isArray(participants) ? participants : []), [participants]);
   const horseSignature = useMemo(
@@ -401,7 +445,10 @@ function RaceManagementTab({
     if (activeTab === 'results' || activeTab === 'positions') {
       onReloadParticipants?.();
     }
-  }, [activeTab, onReloadParticipants]);
+    if (activeTab === 'results') {
+      onReloadRace?.();
+    }
+  }, [activeTab, onReloadParticipants, onReloadRace]);
 
   return (
     <div className="space-y-5">
@@ -476,7 +523,15 @@ function RaceManagementTab({
         <ViolationsTab raceId={race.id} raceName={race.name} horses={horses} />
       )}
       {activeTab === 'results' && (
-        <ResultsTab raceId={race.id} race={race} horses={horses} startPositions={startPositions} />
+        <ResultsTab
+          raceId={race.id}
+          race={race}
+          horses={horses}
+          startPositions={startPositions}
+          onStartRace={onStartRace}
+          startingRace={startingRace}
+          onReloadRace={onReloadRace}
+        />
       )}
     </div>
   );
@@ -656,23 +711,13 @@ function StartingPositionsTab({
 function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
   const horses = Array.isArray(horsesProp) ? horsesProp : [];
   const [filter, setFilter] = useState('all');
-  const [noteFor, setNoteFor] = useState(null);
-  const [noteText, setNoteText] = useState('');
-  const [noteStatus, setNoteStatus] = useState('CHECKED_IN');
   const [submittingId, setSubmittingId] = useState(null);
   const checkInEnabled = canRefereeCheckIn(race?.status);
   const blockedMessage = getRefereeCheckInBlockedMessage(race?.status, race?.statusLabel);
 
-  useEffect(() => {
-    if (!noteFor) return;
-    const horse = horses.find((h) => h.id === noteFor);
-    if (REFEREE_CHECK_IN_STATUSES.includes(horse?.status)) {
-      setNoteStatus(horse.status);
-    } else {
-      setNoteStatus('CHECKED_IN');
-    }
-    setNoteText(horse?.note ?? '');
-  }, [noteFor, horses]);
+  const isPresent = (status) =>
+    status === 'CHECKED_IN' || status === 'FINISHED' || status === 'DNF' || status === 'DISQUALIFIED';
+  const isAbsent = (status) => status === 'ABSENT';
 
   const applyCheckIn = async (horse, status) => {
     if (!checkInEnabled) {
@@ -681,41 +726,11 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
     }
     setSubmittingId(horse.id);
     try {
-      await refereeService.checkInParticipant(raceId, horse.participantId, {
-        status,
-        note: horse.note || undefined,
-      });
-      toast.success('Đã cập nhật trạng thái check-in');
+      await refereeService.checkInParticipant(raceId, horse.participantId, { status });
+      toast.success(status === 'CHECKED_IN' ? 'Đã ghi nhận có mặt' : 'Đã ghi nhận vắng mặt');
       await onReload?.();
     } catch (err) {
       toast.error(getApiErrorMessage(err) || 'Không cập nhật được check-in');
-    } finally {
-      setSubmittingId(null);
-    }
-  };
-
-  const saveNoteAndStatus = async (horseId, status, note) => {
-    if (!checkInEnabled) {
-      toast.error(blockedMessage);
-      return;
-    }
-    if (!REFEREE_CHECK_IN_STATUSES.includes(status)) {
-      toast.error('Chọn trạng thái check-in hợp lệ trước khi lưu ghi chú');
-      return;
-    }
-    const horse = horses.find((h) => h.id === horseId);
-    if (!horse) return;
-    setSubmittingId(horseId);
-    try {
-      await refereeService.checkInParticipant(raceId, horse.participantId, {
-        status,
-        note: note || undefined,
-      });
-      toast.success('Đã lưu ghi chú');
-      setNoteFor(null);
-      await onReload?.();
-    } catch (err) {
-      toast.error(getApiErrorMessage(err) || 'Không lưu được ghi chú');
     } finally {
       setSubmittingId(null);
     }
@@ -729,12 +744,17 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
     return <div className="text-center py-12 text-white/40 text-sm">Chưa có ngựa để check-in.</div>;
   }
 
-  const filtered = horses.filter((h) => filter === 'all' || h.status === filter);
+  const filtered = horses.filter((h) => {
+    if (filter === 'all') return true;
+    if (filter === 'CHECKED_IN') return isPresent(h.status);
+    if (filter === 'ABSENT') return isAbsent(h.status);
+    if (filter === 'REGISTERED') return h.status === 'REGISTERED';
+    return true;
+  });
   const counts = {
-    CHECKED_IN: horses.filter((h) => h.status === 'CHECKED_IN').length,
+    CHECKED_IN: horses.filter((h) => isPresent(h.status)).length,
     REGISTERED: horses.filter((h) => h.status === 'REGISTERED').length,
-    ABSENT: horses.filter((h) => h.status === 'ABSENT').length,
-    DISQUALIFIED: horses.filter((h) => h.status === 'DISQUALIFIED').length,
+    ABSENT: horses.filter((h) => isAbsent(h.status)).length,
   };
   const pct = horses.length ? Math.round((counts.CHECKED_IN / horses.length) * 100) : 0;
 
@@ -747,11 +767,18 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <CountTile label="Đã check-in" v={counts.CHECKED_IN} total={horses.length} tone="green" icon={CheckCircle2} />
+      <GlassCard className="p-4 flex items-start gap-3 bg-white/[0.03] border-white/10">
+        <Info className="w-5 h-5 text-[#D4A017] mt-0.5 shrink-0" />
+        <p className="text-xs text-white/70 leading-relaxed">
+          Check-in chỉ ghi nhận <strong className="text-white">có mặt</strong> hoặc <strong className="text-white">vắng mặt</strong> trước giờ đua.
+          Kết quả thi đấu nhập ở tab <strong className="text-[#D4A017]">Ghi kết quả</strong>.
+        </p>
+      </GlassCard>
+
+      <div className="grid grid-cols-3 gap-3">
+        <CountTile label="Có mặt" v={counts.CHECKED_IN} total={horses.length} tone="green" icon={CheckCircle2} />
         <CountTile label="Chờ" v={counts.REGISTERED} total={horses.length} tone="gold" icon={Clock} />
         <CountTile label="Vắng mặt" v={counts.ABSENT} total={horses.length} tone="gray" icon={Ban} />
-        <CountTile label="Loại / không đủ ĐK" v={counts.DISQUALIFIED} total={horses.length} tone="purple" icon={AlertOctagon} />
       </div>
 
       <GlassCard>
@@ -762,16 +789,15 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
             </div>
             <div>
               <h3 className="font-bold text-white">Bảng check-in</h3>
-              <p className="text-xs text-white/50">{counts.CHECKED_IN}/{horses.length} ngựa đã check-in · {pct}%</p>
+              <p className="text-xs text-white/50">{counts.CHECKED_IN}/{horses.length} ngựa có mặt · {pct}%</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="all">Tất cả</option>
-              <option value="CHECKED_IN">Đã check-in</option>
+              <option value="CHECKED_IN">Có mặt</option>
               <option value="REGISTERED">Chờ</option>
               <option value="ABSENT">Vắng mặt</option>
-              <option value="DISQUALIFIED">Loại</option>
             </Select>
           </div>
         </div>
@@ -798,19 +824,18 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-white text-sm">{h.horse}</div>
-                    {h.note && <div className="text-[10px] text-[#D4A017] mt-0.5 italic line-clamp-1">"{h.note}"</div>}
                   </td>
                   <td className="px-4 py-3 text-sm text-white/70">{h.owner}</td>
                   <td className="px-4 py-3 text-sm text-white/70">{h.jockey}</td>
                   <td className="px-4 py-3 text-center">
-                    <Pill tone={checkinTone(h.status)}>{h.checkIn}</Pill>
+                    <Pill tone={checkinTone(h.status)}>{checkInDisplayLabel(h.status)}</Pill>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <ActionBtn
                         tone="green"
                         icon={CheckCircle2}
-                        active={h.status === 'CHECKED_IN'}
+                        active={isPresent(h.status)}
                         title="Có mặt"
                         disabled={!checkInEnabled || submittingId === h.id}
                         onClick={() => applyCheckIn(h, 'CHECKED_IN')}
@@ -818,33 +843,11 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
                       <ActionBtn
                         tone="gray"
                         icon={Ban}
-                        active={h.status === 'ABSENT'}
+                        active={isAbsent(h.status)}
                         title="Vắng mặt"
                         disabled={!checkInEnabled || submittingId === h.id}
                         onClick={() => applyCheckIn(h, 'ABSENT')}
                       />
-                      <ActionBtn
-                        tone="purple"
-                        icon={AlertOctagon}
-                        active={h.status === 'DISQUALIFIED'}
-                        title="Loại / không đủ ĐK"
-                        disabled={!checkInEnabled || submittingId === h.id}
-                        onClick={() => applyCheckIn(h, 'DISQUALIFIED')}
-                      />
-                      <button
-                        onClick={() => {
-                          if (!checkInEnabled) {
-                            toast.error(blockedMessage);
-                            return;
-                          }
-                          setNoteFor(h.id);
-                        }}
-                        disabled={!checkInEnabled}
-                        className="p-2 text-white/60 hover:text-[#D4A017] hover:bg-[#D4A017]/10 rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
-                        title="Ghi chú"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -853,45 +856,6 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
           </table>
         </div>
       </GlassCard>
-
-      {noteFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setNoteFor(null)}>
-          <div className="bg-[#0F1E3A] border border-white/10 rounded-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-3">
-              <FileText className="w-4 h-4 text-[#D4A017]" />
-              <h3 className="font-bold text-white">Ghi chú trọng tài</h3>
-            </div>
-            <textarea
-              rows={4}
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Ghi chú nội bộ về ngựa này..."
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4A017] resize-none"
-            />
-            {noteFor && !REFEREE_CHECK_IN_STATUSES.includes(horses.find((h) => h.id === noteFor)?.status) && (
-              <div className="mt-3">
-                <label className="mb-1.5 block text-xs font-semibold text-white/50">Trạng thái khi lưu ghi chú</label>
-                <Select value={noteStatus} onChange={(e) => setNoteStatus(e.target.value)}>
-                  <option value="CHECKED_IN">Có mặt</option>
-                  <option value="ABSENT">Vắng mặt</option>
-                  <option value="DISQUALIFIED">Loại / không đủ ĐK</option>
-                </Select>
-              </div>
-            )}
-            <div className="mt-4 flex justify-end gap-2">
-              <GhostButton onClick={() => setNoteFor(null)}>Hủy</GhostButton>
-              <PrimaryButton
-                icon={Save}
-                onClick={() => {
-                  saveNoteAndStatus(noteFor, noteStatus, noteText);
-                }}
-              >
-                Lưu
-              </PrimaryButton>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1357,73 +1321,131 @@ function ResultsTab({
   race,
   horses: horsesProp,
   startPositions,
+  onStartRace,
+  startingRace,
+  onReloadRace,
 }) {
-  const user = useAuthStore((s) => s.user);
-  const refereeName = user?.fullName || user?.username || 'Trọng tài';
   const horses = Array.isArray(horsesProp) ? horsesProp : [];
   const safeStartPositions =
     startPositions && typeof startPositions === 'object' && !Array.isArray(startPositions)
       ? startPositions
-      : {}
-  const [confirmed, setConfirmed] = useState(race?.status === 'RESULT_CONFIRMED')
-  const [notes, setNotes] = useState('')
-  const [rows, setRows] = useState([])
-  const [submitting, setSubmitting] = useState(false)
+      : {};
+
+  const [liveRaceStatus, setLiveRaceStatus] = useState(() => normalizeRaceStatusCode(race?.status));
+  const [tournamentStatus, setTournamentStatus] = useState(
+    () => normalizeTournamentStatusCode(race?.tournamentStatus),
+  );
+  const tournamentCompleted = tournamentStatus === 'COMPLETED';
+  const canEdit = canRefereeEditRaceResults(liveRaceStatus, tournamentStatus);
+  const needsManualStart =
+    liveRaceStatus === 'SCHEDULED' && tournamentStatus !== 'ONGOING' && !canEdit;
+  const hasSavedResults = liveRaceStatus === 'RESULT_CONFIRMED';
+
+  const [rows, setRows] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingResults, setLoadingResults] = useState(false);
+
+  const refreshLiveRaceStatus = useCallback(async () => {
+    if (!raceId) return normalizeRaceStatusCode(race?.status);
+    try {
+      const fresh = await refereeService.getAssignedRaceById(raceId);
+      const code = normalizeRaceStatusCode(fresh?.status ?? race?.status);
+      setLiveRaceStatus(code);
+      return code;
+    } catch {
+      const fallback = normalizeRaceStatusCode(race?.status);
+      setLiveRaceStatus(fallback);
+      return fallback;
+    }
+  }, [raceId, race?.status]);
 
   useEffect(() => {
-    if (!horses.length) {
-      setRows([])
-      return
-    }
+    setLiveRaceStatus(normalizeRaceStatusCode(race?.status));
+  }, [race?.status]);
 
-    setRows((previous) => {
-      const previousById = new Map(previous.map((row) => [String(row.id), row]))
+  useEffect(() => {
+    setTournamentStatus(normalizeTournamentStatusCode(race?.tournamentStatus));
+  }, [race?.tournamentStatus]);
 
-      return horses.map((horse, index) => {
-        const existing = previousById.get(String(horse.id))
-        const startPos = getAssignedGate(horse, safeStartPositions)
+  useEffect(() => {
+    if (!race?.tournamentId) return undefined;
 
-        if (existing) {
-          return {
-            ...existing,
-            participantId: horse.participantId,
-            horse: horse.horse,
-            owner: horse.owner,
-            jockey: horse.jockey,
-            startPos,
-          }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, raw } = await tournamentService.getPublicTournament(race.tournamentId);
+        if (!cancelled) {
+          setTournamentStatus(
+            normalizeTournamentStatusCode(raw?.status ?? data?.statusCode ?? data?.status),
+          );
         }
-
-        return {
-          id: horse.id,
-          participantId: horse.participantId,
-          horse: horse.horse,
-          owner: horse.owner,
-          jockey: horse.jockey,
-          startPos,
-          position: index + 1,
-          time: '',
-          penalty: '',
-          dq: false,
+      } catch {
+        if (!cancelled) {
+          setTournamentStatus(normalizeTournamentStatusCode(race?.tournamentStatus));
         }
-      })
-    })
-  }, [raceId, horses, startPositions])
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [race?.tournamentId, race?.tournamentStatus]);
+
+  useEffect(() => {
+    if (!raceId || !horses.length) return undefined;
+
+    let cancelled = false;
+    (async () => {
+      setLoadingResults(true);
+      const draft = loadResultsDraft(raceId);
+      try {
+        const results = await refereeService.getRaceResults(raceId);
+        if (cancelled) return;
+        if (draft?.length) {
+          setRows(buildResultRowsFromHorses(horses, safeStartPositions, { draftRows: draft }));
+        } else if (results.length) {
+          setRows(buildResultRowsFromHorses(horses, safeStartPositions, { results }));
+        } else {
+          setRows(buildResultRowsFromHorses(horses, safeStartPositions));
+        }
+      } catch {
+        if (!cancelled) {
+          setRows(
+            draft?.length
+              ? buildResultRowsFromHorses(horses, safeStartPositions, { draftRows: draft })
+              : buildResultRowsFromHorses(horses, safeStartPositions),
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingResults(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [raceId, horses, safeStartPositions]);
 
   const updateRow = (id, patch) => {
-    if (!patch || typeof patch !== 'object') return
-    setRows((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
-  }
+    if (!patch || typeof patch !== 'object') return;
+    setRows((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  };
 
-  const sortByPos = () =>
-    setRows((rs) => {
-      const sorted = [...rs].sort((a, b) => {
-        if (a.dq && !b.dq) return 1;
-        if (!a.dq && b.dq) return -1;
-        return a.position - b.position;
+  const toggleDq = (id) => {
+    setRows((prev) => {
+      const next = prev.map((row) => {
+        if (row.id !== id) return row;
+        const dq = !row.dq;
+        return {
+          ...row,
+          dq,
+          time: dq ? '' : row.time,
+          dqReason: dq ? row.dqReason : '',
+        };
       });
-      return sorted.map((x, i) => ({ ...x, position: x.dq ? rs.length : i + 1 }));
+      return recompactFinishedRanks(next);
     });
+  };
 
   const winner = rows.find((x) => x.position === 1 && !x.dq);
 
@@ -1432,23 +1454,51 @@ function ResultsTab({
       toast.error('Chưa có ngựa để ghi kết quả');
       return;
     }
-    const invalid = rows.find((r) => !r.dq && !String(r.time).trim());
-    if (invalid) {
-      toast.error('Vui lòng nhập thời gian cho tất cả ngựa chưa bị loại');
+
+    const dqMissingReason = rows.find((r) => r.dq && !String(r.dqReason ?? '').trim());
+    if (dqMissingReason) {
+      toast.error(`Vui lòng nhập lý do loại cho ${dqMissingReason.horse}`);
+      return;
+    }
+
+    const invalidTime = rows.find(
+      (r) => !r.dq && (!isCompleteRaceTime(r.time) || !isValidRaceTime(r.time)),
+    );
+    if (invalidTime) {
+      toast.error(`Thời gian không hợp lệ cho ${invalidTime.horse} (định dạng MM:SS:CC)`);
       return;
     }
 
     setSubmitting(true);
     try {
-      const results = rows.map((r) => ({
-        participantId: r.participantId,
-        rank: r.dq ? rows.length : r.position,
-        finishTimeMillis: r.dq ? 0 : parseFinishTimeToMillis(r.time),
-        status: r.dq ? 'DISQUALIFIED' : 'FINISHED',
-        note: [r.penalty, notes].filter(Boolean).join(' · ') || undefined,
-      }));
-      await refereeService.finalizeRaceResults(raceId, results);
-      setConfirmed(true);
+      if (hasSavedResults) {
+        saveResultsDraft(raceId, rows);
+        toast.success('Đã lưu thay đổi trên trình duyệt (giải vẫn đang diễn ra)');
+        return;
+      }
+
+      if (onReloadRace) await onReloadRace();
+      let status = await refreshLiveRaceStatus();
+
+      if (status === 'SCHEDULED') {
+        await refereeService.startRace(raceId);
+        status = 'ONGOING';
+        setLiveRaceStatus('ONGOING');
+        if (onReloadRace) await onReloadRace();
+      }
+
+      if (status !== 'ONGOING') {
+        toast.error(
+          'Chưa thể chốt kết quả. Hãy bấm "Bắt đầu cuộc đua" trước — giải phải ở trạng thái "Đang diễn ra".',
+        );
+        return;
+      }
+
+      const payload = buildRaceFinalizePayload(rows);
+      await refereeService.finalizeRaceResults(raceId, payload);
+      clearResultsDraft(raceId);
+      await refreshLiveRaceStatus();
+      if (onReloadRace) await onReloadRace();
       toast.success('Đã xác nhận kết quả chính thức');
     } catch (err) {
       toast.error(getApiErrorMessage(err) || 'Không xác nhận được kết quả');
@@ -1461,46 +1511,26 @@ function ResultsTab({
     return <div className="text-center py-12 text-white/40 text-sm">Chưa có ngựa để ghi kết quả.</div>;
   }
 
-  if (confirmed) {
+  if (tournamentCompleted) {
     return (
       <GlassCard>
-        <div className="p-6 bg-gradient-to-br from-emerald-500/20 to-transparent border-b border-white/10">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-emerald-300" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">Kết quả chính thức đã được xác nhận</h3>
-                <p className="text-xs text-white/60">Ký bởi {refereeName} · Phát hành cho tournament và người dùng</p>
-              </div>
+        <div className="p-6 bg-gradient-to-br from-purple-500/20 to-transparent border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-purple-500/20 border border-purple-500/40 rounded-2xl flex items-center justify-center">
+              <Lock className="w-6 h-6 text-purple-300" />
             </div>
-            <GhostButton icon={FileText} onClick={() => setConfirmed(false)}>Sửa lại</GhostButton>
+            <div>
+              <h3 className="text-lg font-bold text-white">Giải đấu đã kết thúc</h3>
+              <p className="text-xs text-white/60">Admin đã chuyển trạng thái sang &quot;Đã kết thúc&quot; — không thể chỉnh sửa kết quả</p>
+            </div>
           </div>
         </div>
         <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-            {[1, 2, 3].map((p) => {
-              const r = rows.find((x) => x.position === p && !x.dq);
-              if (!r) return null;
-              const Icon = p === 1 ? Crown : Medal;
-              const tone = p === 1 ? 'gold' : p === 2 ? 'gray' : 'purple';
-              const bg = p === 1 ? 'from-[#D4A017]/20' : p === 2 ? 'from-white/10' : 'from-orange-500/15';
-              return (
-                <div key={p} className={`p-4 bg-gradient-to-br ${bg} to-transparent border border-white/10 rounded-2xl`}>
-                  <Icon className={`w-5 h-5 mb-2 ${p === 1 ? 'text-[#D4A017]' : p === 2 ? 'text-white/60' : 'text-orange-300'}`} />
-                  <div className="text-[10px] uppercase tracking-wider text-white/40">Hạng {p}</div>
-                  <div className="text-lg font-bold text-white mt-1">{r.horse}</div>
-                  <div className="text-xs text-white/60">{r.jockey} · {r.time}</div>
-                  <div className="text-[11px] text-white/50 mt-1">Chủ ngựa: {r.owner}</div>
-                  <div className="mt-2">
-                    <Pill tone={tone}>Cổng {r.startPos}</Pill>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <ResultsTable rows={rows} readOnly />
+          {loadingResults ? (
+            <div className="text-center py-8 text-white/40 text-sm">Đang tải kết quả...</div>
+          ) : (
+            <ResultsTable rows={rows} readOnly />
+          )}
         </div>
       </GlassCard>
     );
@@ -1508,14 +1538,38 @@ function ResultsTab({
 
   return (
     <div className="space-y-5">
-      <GlassCard className="p-4 flex items-start gap-3 bg-gradient-to-r from-[#D4A017]/10 to-transparent border-[#D4A017]/30">
-        <Info className="w-5 h-5 text-[#D4A017] mt-0.5 shrink-0" />
-        <div className="text-xs text-white/70 leading-relaxed">
-          Nhập thứ hạng & thời gian từng ngựa, đánh dấu DQ cho ngựa bị loại, kèm hình phạt nếu có. Vị trí xuất phát được lấy từ
-          mục <span className="text-[#D4A017] font-semibold">Vị trí xuất phát</span>. Khi xác nhận, kết quả sẽ được{' '}
-          <span className="text-[#D4A017] font-semibold">khóa và phát hành chính thức</span>.
-        </div>
-      </GlassCard>
+      {needsManualStart && (
+        <GlassCard className="p-4 flex items-start justify-between gap-4 flex-wrap bg-gradient-to-r from-amber-500/10 to-transparent border-amber-500/30">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-amber-300 mt-0.5 shrink-0" />
+            <div className="text-xs text-white/70 leading-relaxed">
+              Cuộc đua chưa bắt đầu. Bấm <span className="text-[#D4A017] font-semibold">Bắt đầu cuộc đua</span> trước khi ghi kết quả.
+            </div>
+          </div>
+          {onStartRace && (
+            <PrimaryButton icon={Play} onClick={onStartRace} disabled={startingRace}>
+              {startingRace ? 'Đang bắt đầu...' : 'Bắt đầu cuộc đua'}
+            </PrimaryButton>
+          )}
+        </GlassCard>
+      )}
+
+      {canEdit && (
+        <GlassCard className="p-4 flex items-start gap-3 bg-gradient-to-r from-emerald-500/10 to-transparent border-emerald-500/30">
+          <Info className="w-5 h-5 text-emerald-300 mt-0.5 shrink-0" />
+          <div className="text-xs text-white/70 leading-relaxed">
+            Giải đang <span className="text-emerald-300 font-semibold">Đang diễn ra</span> — bạn có thể ghi và sửa kết quả.
+            {hasSavedResults && (
+              <span className="block mt-1 text-white/50">
+                Kết quả đã chốt trên server — bạn vẫn chỉnh sửa và bấm &quot;Lưu thay đổi&quot; (lưu nháp trên trình duyệt).
+              </span>
+            )}
+            <span className="block mt-1">
+              Nhập thời gian <span className="font-mono text-white/80">MM:SS:CC</span>. Ngựa bị loại cần ghi lý do.
+            </span>
+          </div>
+        </GlassCard>
+      )}
 
       <GlassCard>
         <div className="p-5 border-b border-white/10 flex items-center justify-between flex-wrap gap-3">
@@ -1525,37 +1579,38 @@ function ResultsTab({
             </div>
             <div>
               <h3 className="font-bold text-white">Ghi kết quả · {race?.name}</h3>
-              <p className="text-xs text-white/50">{rows.length} ngựa · {winner ? `Vô địch dự kiến: ${winner.horse}` : 'Chưa có vô địch'}</p>
+              <p className="text-xs text-white/50">
+                {rows.length} ngựa
+                {winner ? ` · Vô địch dự kiến: ${winner.horse}` : ' · Chưa có vô địch'}
+              </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <GhostButton icon={Activity} onClick={sortByPos}>Sắp xếp theo hạng</GhostButton>
-            <GhostButton icon={Save}>Lưu nháp</GhostButton>
           </div>
         </div>
         <div className="p-5">
           <ResultsTable
             rows={rows}
-            onUpdate={updateRow}
+            readOnly={!canEdit}
+            onUpdate={canEdit ? updateRow : undefined}
+            onToggleDq={canEdit ? toggleDq : undefined}
           />
-          <div className="mt-5">
-            <label className="block text-xs uppercase tracking-wider text-white/60 font-semibold mb-2">Ghi chú race</label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Tóm tắt diễn biến race, điều kiện sân, sự cố đặc biệt..."
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4A017] resize-none"
-            />
-          </div>
         </div>
         <div className="p-5 border-t border-white/10 flex items-center justify-between flex-wrap gap-3 bg-gradient-to-r from-[#D4A017]/5 to-transparent">
           <div className="text-xs text-white/60 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-300" />
-            Sau khi xác nhận, kết quả sẽ được phát hành · có thể sửa lại nếu cần trước khi ký chính thức
+            {canEdit
+              ? 'Có thể ghi/sửa kết quả khi giải đang diễn ra'
+              : 'Admin cần bật giải "Đang diễn ra" để ghi kết quả'}
           </div>
-          <PrimaryButton icon={Send} onClick={handleFinalize} disabled={submitting}>
-            {submitting ? 'Đang xác nhận...' : 'Xác nhận & phát hành kết quả'}
+          <PrimaryButton
+            icon={Send}
+            onClick={handleFinalize}
+            disabled={submitting || !canEdit}
+          >
+            {submitting
+              ? 'Đang lưu...'
+              : hasSavedResults
+                ? 'Lưu thay đổi'
+                : 'Xác nhận & phát hành kết quả'}
           </PrimaryButton>
         </div>
       </GlassCard>
@@ -1566,6 +1621,7 @@ function ResultsTab({
 function ResultsTable({
   rows,
   onUpdate,
+  onToggleDq,
   readOnly,
 }) {
   return (
@@ -1579,8 +1635,8 @@ function ResultsTable({
             <th className="px-3 py-3">Jockey</th>
             <th className="px-3 py-3 w-24 text-center">Vị trí XP</th>
             <th className="px-3 py-3 w-32">Thời gian</th>
-            <th className="px-3 py-3 w-40">Hình phạt</th>
             <th className="px-3 py-3 w-20 text-center">Loại</th>
+            <th className="px-3 py-3 min-w-[180px]">Lý do loại</th>
           </tr>
         </thead>
         <tbody>
@@ -1588,7 +1644,7 @@ function ResultsTable({
             const podium = !r.dq && r.position <= 3;
             const PodiumIcon = r.position === 1 ? Crown : Medal;
             return (
-              <tr key={r.id} className={`border-b border-white/5 ${r.dq ? 'opacity-50' : ''}`}>
+              <tr key={r.id} className={`border-b border-white/5 ${r.dq ? 'opacity-70' : ''}`}>
                 <td className="px-3 py-3 text-center">
                   {readOnly ? (
                     <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold ${
@@ -1605,10 +1661,11 @@ function ResultsTable({
                     <input
                       type="number"
                       min={1}
-                      max={rows.length}
-                      value={r.position}
+                      max={rows.filter((x) => !x.dq).length || 1}
+                      value={r.dq ? '' : r.position}
+                      disabled={r.dq}
                       onChange={(e) => onUpdate?.(r.id, { position: Number(e.target.value) })}
-                      className="w-14 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm font-bold text-center focus:outline-none focus:border-[#D4A017]"
+                      className="w-14 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm font-bold text-center focus:outline-none focus:border-[#D4A017] disabled:opacity-40"
                     />
                   )}
                 </td>
@@ -1628,25 +1685,18 @@ function ResultsTable({
                   </div>
                 </td>
                 <td className="px-3 py-3">
-                  {readOnly ? (
+                  {readOnly || r.dq ? (
                     <span className="font-mono text-sm text-white">{r.dq ? '—' : r.time}</span>
                   ) : (
                     <input
                       value={r.time}
-                      onChange={(e) => onUpdate?.(r.id, { time: e.target.value })}
+                      onChange={(e) => onUpdate?.(r.id, { time: sanitizeRaceTimeInput(e.target.value) })}
+                      onBlur={() => {
+                        const formatted = formatRaceTimeOnBlur(r.time);
+                        if (formatted) onUpdate?.(r.id, { time: formatted });
+                      }}
+                      placeholder="MM:SS:CC"
                       className="w-28 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-mono focus:outline-none focus:border-[#D4A017]"
-                    />
-                  )}
-                </td>
-                <td className="px-3 py-3">
-                  {readOnly ? (
-                    <span className="text-xs text-white/60">{r.penalty || '—'}</span>
-                  ) : (
-                    <input
-                      value={r.penalty}
-                      onChange={(e) => onUpdate?.(r.id, { penalty: e.target.value })}
-                      placeholder="VD: -2s · Cảnh cáo"
-                      className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-[#D4A017]"
                     />
                   )}
                 </td>
@@ -1655,13 +1705,28 @@ function ResultsTable({
                     r.dq ? <Pill tone="red">Loại</Pill> : <span className="text-white/30">—</span>
                   ) : (
                     <button
-                      onClick={() => onUpdate?.(r.id, { dq: !r.dq })}
+                      type="button"
+                      onClick={() => onToggleDq?.(r.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                         r.dq ? 'bg-red-500 text-white' : 'bg-white/5 text-white/40 hover:bg-red-500/20 hover:text-red-300'
                       }`}
                     >
                       Loại
                     </button>
+                  )}
+                </td>
+                <td className="px-3 py-3">
+                  {readOnly ? (
+                    <span className="text-xs text-white/60">{r.dq ? (r.dqReason || '—') : '—'}</span>
+                  ) : r.dq ? (
+                    <input
+                      value={r.dqReason ?? ''}
+                      onChange={(e) => onUpdate?.(r.id, { dqReason: e.target.value })}
+                      placeholder="VD: Phạm luật xuất phát"
+                      className="w-full px-2 py-1.5 bg-white/5 border border-red-500/30 rounded-lg text-white text-xs focus:outline-none focus:border-red-400"
+                    />
+                  ) : (
+                    <span className="text-white/25 text-xs">—</span>
                   )}
                 </td>
               </tr>

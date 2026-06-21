@@ -61,6 +61,11 @@ export const refereeService = {
     return Array.isArray(data) ? data : []
   },
 
+  async getAssignedRaceById(raceId) {
+    const races = await this.getAssignedRaces()
+    return races.find((race) => String(race?.id) === String(raceId)) ?? null
+  },
+
   async getRaceParticipants(raceId) {
     const data = await axiosClient
       .get(ENDPOINTS.referee.participants(raceId))
