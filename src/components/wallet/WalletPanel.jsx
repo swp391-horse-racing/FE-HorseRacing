@@ -14,12 +14,15 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Check
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { invalidateWalletCache, walletService } from '@/services/walletService'
 import { fmtVND } from '@/utils/formatCurrency'
 import { getApiErrorMessage } from '@/utils/apiError'
+import HorseRacingThreeBackground from './HorseRacingThreeBackground'
 
 const PRESETS = [100_000, 500_000, 1_000_000, 5_000_000, 10_000_000]
 const PROVIDER = 'ZALOPAY'
@@ -243,16 +246,13 @@ const WALLET_UI = {
   inputUpper:
     'w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#D4A017] focus:ring-4 focus:ring-[#D4A017]/10 transition-all text-white uppercase placeholder:text-white/30 placeholder:font-normal text-sm font-bold',
   btnDisabled: 'bg-white/5 text-white/30 cursor-not-allowed shadow-none border border-white/10',
-  ticket: 'mt-6 rounded-2xl border border-dashed border-[#D4A017]/50 bg-[#D4A017]/10 p-6 relative overflow-hidden',
-  ticketPunchL:
-    'absolute top-1/2 -left-3 w-6 h-6 rounded-full bg-[#0A1628] border-r border-[#D4A017]/30 transform -translate-y-1/2',
-  ticketPunchR:
-    'absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-[#0A1628] border-l border-[#D4A017]/30 transform -translate-y-1/2',
-  ticketHeader:
-    'flex items-center gap-2 text-white font-extrabold text-sm mb-4 pb-4 border-b border-dashed border-white/15',
-  ticketLabel: 'text-white/50 text-xs font-semibold',
-  ticketValue: 'font-bold text-white',
-  ticketMono: 'font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded text-xs select-all w-fit',
+  ticket: 'mt-6 rounded-3xl border border-[#008fe5]/30 bg-gradient-to-br from-slate-900/90 to-[#0A1628]/95 p-6 relative overflow-hidden shadow-2xl shadow-sky-500/5 backdrop-blur-md',
+  ticketPunchL: 'w-3 h-6 rounded-r-full bg-[#0A1628] border-y border-r border-[#008fe5]/30 shrink-0',
+  ticketPunchR: 'w-3 h-6 rounded-l-full bg-[#0A1628] border-y border-l border-[#008fe5]/30 shrink-0',
+  ticketHeader: 'flex items-center gap-2 text-white font-extrabold text-sm mb-4 pb-4 border-b border-white/10',
+  ticketLabel: 'text-white/45 text-[11px] font-medium tracking-wide uppercase',
+  ticketValue: 'font-bold text-white text-xs truncate max-w-[150px] sm:max-w-none',
+  ticketMono: 'font-mono font-bold text-white bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[11px] select-all truncate max-w-[120px] sm:max-w-none w-fit',
   historyHeading: 'text-base font-extrabold text-white flex items-center gap-2',
   historyIcon: 'w-5 h-5 text-white/45',
   historySub: 'text-xs text-white/55',
@@ -319,6 +319,23 @@ export default function WalletPanel({
     bankAccountName: '',
     reason: '',
   })
+
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedContent, setCopiedContent] = useState(false)
+
+  const handleCopy = (text, type) => {
+    if (!text) return
+    navigator.clipboard.writeText(text)
+    toast.success(`Đã sao chép ${type === 'code' ? 'mã lệnh nạp' : 'nội dung chuyển khoản'}`)
+    if (type === 'code') {
+      setCopiedCode(true)
+      setTimeout(() => setCopiedCode(false), 2000)
+    } else {
+      setCopiedContent(true)
+      setTimeout(() => setCopiedContent(false), 2000)
+    }
+  }
+
 
   // State filters & preferences
   const [showBalance, setShowBalance] = useState(() => {
@@ -685,8 +702,8 @@ export default function WalletPanel({
                     setCustomAmount('')
                   }}
                   className={`py-3 px-1 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer ${selectedAmount === p
-                      ? ui.presetActive
-                      : ui.presetInactive
+                    ? ui.presetActive
+                    : ui.presetInactive
                     }`}
                 >
                   {fmtVND(p).replace(/\s?₫/, '')}
@@ -805,10 +822,10 @@ export default function WalletPanel({
             onClick={handleAction}
             disabled={submitting || amount <= 0}
             className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer ${submitting || amount <= 0
-                ? ui.btnDisabled
-                : mode === 'deposit'
-                  ? 'bg-gradient-to-r from-[#D4A017] to-[#B8941F] hover:from-[#B8941F] hover:to-[#D4A017] shadow-[#D4A017]/10 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]'
-                  : 'bg-gradient-to-r from-[#1E3A5F] to-[#0F1E3A] hover:from-[#0F1E3A] hover:to-[#1E3A5F] shadow-[#1E3A5F]/10 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]'
+              ? ui.btnDisabled
+              : mode === 'deposit'
+                ? 'bg-gradient-to-r from-[#D4A017] to-[#B8941F] hover:from-[#B8941F] hover:to-[#D4A017] shadow-[#D4A017]/10 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]'
+                : 'bg-gradient-to-r from-[#1E3A5F] to-[#0F1E3A] hover:from-[#0F1E3A] hover:to-[#1E3A5F] shadow-[#1E3A5F]/10 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]'
               }`}
           >
             {submitting ? (
@@ -831,83 +848,153 @@ export default function WalletPanel({
           {/* ZaloPay invoice ticket rendering */}
           {depositOrder && mode === 'deposit' && (
             <div className={ui.ticket}>
-              {/* Corner punch cuts to look like a ticket */}
-              <div className={ui.ticketPunchL}></div>
-              <div className={ui.ticketPunchR}></div>
+              {/* Branded ZaloPay Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-5 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="bg-[#008fe5] p-2 rounded-xl flex items-center justify-center shadow-lg shadow-[#008fe5]/20 shrink-0">
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 100 100" fill="currentColor">
+                      <path d="M50,5 C25.1,5 5,25.1 5,50 C5,74.9 25.1,95 50,95 C74.9,95 95,74.9 95,50 C95,25.1 74.9,5 50,5 Z" fill="#008fe5" />
+                      <path d="M35,30 H55 C63.3,30 70,36.7 70,45 C70,53.3 63.3,60 55,60 H45 V75 H35 V30 Z M45,40 V50 H55 C57.8,50 60,47.8 60,45 C60,42.2 57.8,40 55,40 H45 Z" fill="white" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-white tracking-wide">CỔNG THANH TOÁN ZALOPAY</h3>
+                    <p className="text-[10px] text-white/50 font-semibold uppercase tracking-wider">Hệ thống xử lý tự động</p>
+                  </div>
+                </div>
 
-              <div className={ui.ticketHeader}>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                LỆNH NẠP TIỀN ĐANG CHỜ THANH TOÁN
+                <div className="flex items-center gap-1.5 self-start sm:self-auto bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1 shrink-0">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none">
+                    Đang kết nối
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm mb-6">
-                <div className="flex justify-between sm:flex-col sm:justify-start gap-1">
-                  <span className={ui.ticketLabel}>Mã lệnh nạp:</span>
-                  <span className={ui.ticketValue}>{depositOrder.referenceCode || '—'}</span>
+              {/* Details Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Transaction Reference */}
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/[0.05] transition-all shadow-md shadow-black/5">
+                  <span className={ui.ticketLabel}>Mã lệnh nạp</span>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <span className={ui.ticketValue}>{depositOrder.referenceCode || '—'}</span>
+                    {depositOrder.referenceCode && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(depositOrder.referenceCode, 'code')}
+                        className="text-white/40 hover:text-white p-1 rounded hover:bg-white/10 transition-all shrink-0 cursor-pointer"
+                        title="Sao chép mã"
+                      >
+                        {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-between sm:flex-col sm:justify-start gap-1">
-                  <span className={ui.ticketLabel}>Trạng thái:</span>
-                  <span className="inline-flex items-center">
+
+                {/* Status */}
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/[0.05] transition-all shadow-md shadow-black/5">
+                  <span className={ui.ticketLabel}>Trạng thái</span>
+                  <div className="flex items-center mt-1.5">
                     <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${statusTone(depositOrder.status)}`}>
                       {statusIcon(depositOrder.status)}
                       {STATUS_LABELS[depositOrder.status] || depositOrder.status}
                     </span>
-                  </span>
+                  </div>
                 </div>
-                <div className="flex justify-between sm:flex-col sm:justify-start gap-1">
-                  <span className={ui.ticketLabel}>Hết hạn vào:</span>
-                  <span className={ui.ticketValue}>{formatTxTime(depositOrder.expiredAt)}</span>
+
+                {/* Expiry */}
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/[0.05] transition-all shadow-md shadow-black/5">
+                  <span className={ui.ticketLabel}>Hết hạn vào</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Clock className="w-3.5 h-3.5 text-rose-400/80 shrink-0" />
+                    <span className="font-bold text-white text-xs">{formatTxTime(depositOrder.expiredAt)}</span>
+                  </div>
                 </div>
-                {depositOrder.transferContent && (
-                  <div className="flex justify-between sm:flex-col sm:justify-start gap-1">
-                    <span className={ui.ticketLabel}>Nội dung:</span>
-                    <span className={ui.ticketMono}>
-                      {depositOrder.transferContent}
-                    </span>
+
+                {/* Amount or Transfer Content */}
+                {depositOrder.transferContent ? (
+                  <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/[0.05] transition-all shadow-md shadow-black/5">
+                    <span className={ui.ticketLabel}>Nội dung giao dịch</span>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <span className={ui.ticketMono}>{depositOrder.transferContent}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(depositOrder.transferContent, 'content')}
+                        className="text-white/40 hover:text-white p-1 rounded hover:bg-white/10 transition-all shrink-0 cursor-pointer"
+                        title="Sao chép nội dung"
+                      >
+                        {copiedContent ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/[0.05] transition-all shadow-md shadow-black/5">
+                    <span className={ui.ticketLabel}>Số tiền nạp</span>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="font-black text-sm text-[#00bfa5]">{fmtVND(depositOrder.amount || selectedAmount)}</span>
+                    </div>
                   </div>
                 )}
               </div>
 
+              {/* Divider with punch cuts */}
+              <div className="relative my-6 -mx-6 h-0 flex items-center justify-between">
+                <div className={ui.ticketPunchL}></div>
+                <div className="w-full border-t border-dashed border-[#008fe5]/25"></div>
+                <div className={ui.ticketPunchR}></div>
+              </div>
+
+              {/* QR Code Section */}
               {depositQrValue ? (
-                <div className="mb-4 rounded-2xl border border-white/15 bg-white/[0.07] p-4">
-                  <div className="flex flex-col items-center gap-3 text-center">
-                    <div className="rounded-2xl bg-white p-3 shadow-lg shadow-black/10">
+                <div className="relative mb-5 rounded-2xl border border-[#008fe5]/20 bg-[#0A1628] p-5 shadow-lg shadow-sky-950/10 overflow-hidden">
+                  <HorseRacingThreeBackground />
+                  <div className="relative z-10 flex flex-col items-center gap-4 text-center">
+                    {/* Glowing QR wrapper */}
+                    <div className="relative bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-2xl shadow-[#008fe5]/15 border border-white/30 select-none group shrink-0">
+                      {/* Scanner Line */}
+                      <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#008fe5] to-transparent top-0 animate-scan opacity-80 pointer-events-none"></div>
                       <QRCodeSVG
                         value={depositQrValue}
                         size={220}
                         level="M"
-                        includeMargin
-                        className="h-auto w-full max-w-[220px]"
+                        includeMargin={false}
+                        bgColor="transparent"
+                        fgColor="#000000"
+                        className="h-auto w-full max-w-[200px]"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-extrabold text-white">
-                        {isProviderQr ? 'Quét QR để thanh toán' : 'Quét QR để mở trang thanh toán'}
+                    <div className="space-y-2">
+                      <p className="text-sm font-bold text-white tracking-wide">
+                        {isProviderQr ? 'QUÉT MÃ QR ĐỂ THANH TOÁN' : 'QUÉT MÃ QR ĐỂ MỞ LIÊN KẾT'}
                       </p>
-                      <p className="mx-auto max-w-sm text-xs font-semibold leading-relaxed text-white/60">
+                      <p className="mx-auto max-w-sm text-[11px] font-medium leading-relaxed text-white/55">
                         {isProviderQr
-                          ? 'Mở ZaloPay hoặc ứng dụng ngân hàng hỗ trợ VietQR, quét mã này và chờ hệ thống tự cập nhật trạng thái.'
-                          : 'ZaloPay chưa trả về QR thanh toán trực tiếp, mã này sẽ mở trang thanh toán ZaloPay để hoàn tất giao dịch.'}
+                          ? 'Dùng ứng dụng ZaloPay hoặc ứng dụng ngân hàng của bạn, quét mã QR trên và đợi hệ thống tự động hoàn tất.'
+                          : 'Hệ thống đang mở liên kết thanh toán. Quét mã QR trên bằng điện thoại để tiếp tục giao dịch ZaloPay.'}
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-xs font-semibold leading-relaxed text-amber-100">
+                <div className="mb-5 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3.5 text-xs font-semibold leading-relaxed text-amber-100 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
                   ZaloPay chưa trả về mã QR hoặc trang thanh toán cho lệnh này. Vui lòng thử tạo lệnh nạp mới.
                 </div>
               )}
 
+              {/* Action Link Button */}
               {depositOrder.checkoutUrl && (
                 <a
                   href={depositOrder.checkoutUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={`w-full flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-bold text-white active:scale-[0.99] transition-all ${
-                    depositQrValue
-                      ? 'border border-white/15 bg-white/10 hover:bg-white/15'
-                      : 'bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 shadow-md shadow-blue-500/20'
-                  }`}
+                  className={`w-full flex items-center justify-center gap-2 rounded-xl px-5 py-4 text-sm font-bold text-white transition-all active:scale-[0.99] shadow-lg ${depositQrValue
+                    ? 'border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#008fe5]/40'
+                    : 'bg-gradient-to-r from-[#008fe5] to-[#00bfa5] hover:from-[#007cd6] hover:to-[#00b098] shadow-sky-500/15 hover:shadow-xl'
+                    }`}
                 >
                   <span>{depositQrValue ? 'Mở trang thanh toán dự phòng' : 'Mở trang thanh toán ZaloPay'}</span>
                   <ExternalLink className="w-4 h-4" />
@@ -943,8 +1030,8 @@ export default function WalletPanel({
                 type="button"
                 onClick={() => setTxFilter(tab.id)}
                 className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${txFilter === tab.id
-                    ? ui.filterActive
-                    : ui.filterInactive
+                  ? ui.filterActive
+                  : ui.filterInactive
                   }`}
               >
                 {tab.label}

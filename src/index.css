@@ -27,7 +27,7 @@ select option {
   color: #ffffff;
 }
 
-.google-signin-btn > div {
+.google-signin-btn>div {
   width: 100% !important;
   display: flex;
   justify-content: center;
@@ -37,7 +37,7 @@ select option {
   cursor: pointer;
 }
 
-.google-signin-compact > div,
+.google-signin-compact>div,
 .google-signin-compact iframe {
   width: 100% !important;
   height: 100% !important;
@@ -67,4 +67,25 @@ select option {
   .scrollbar-dark::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.28);
   }
+}
+
+@keyframes scan {
+  0% {
+    top: 5%;
+    opacity: 0.1;
+  }
+
+  50% {
+    top: 95%;
+    opacity: 0.8;
+  }
+
+  100% {
+    top: 5%;
+    opacity: 0.1;
+  }
+}
+
+.animate-scan {
+  animation: scan 3s ease-in-out infinite;
 }
