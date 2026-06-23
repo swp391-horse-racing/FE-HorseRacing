@@ -13,68 +13,48 @@ function clampStyle(lines) {
   }
 }
 
-function formatDate(dateString) {
-  return formatDisplayDate(dateString)
-  return new Date(dateString).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
-export default function NewsCard({ news }) {
+export default function NewsCard({ news, compact = false }) {
   return (
     <Link
       to={`/news/${news.id}`}
-      className="group overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-lg transition-all duration-500 hover:-translate-y-2 hover:border-[#D4A017]/30 hover:shadow-2xl"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#1E3A5F]/8 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#D4A017]/30 hover:shadow-md"
     >
-      <div className="relative h-56 overflow-hidden">
+      <div className={`relative overflow-hidden ${compact ? 'h-44' : 'h-52'}`}>
         <NewsImage
           src={news.imageUrl || news.thumbnail}
           alt={news.title}
           preset={NEWS_IMAGE_PRESETS.card}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
-        <div className="absolute left-4 top-4">
-          <span className="rounded-full bg-gradient-to-r from-[#D4A017] to-[#B8941F] px-4 py-1.5 text-xs font-bold text-white shadow-lg">
-            {news.category}
-          </span>
-        </div>
-
-        {news.featured && (
-          <div className="absolute right-4 top-4">
-            <span className="rounded-full bg-red-500 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
-              Noi bat
-            </span>
-          </div>
-        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1E3A5F]/50 via-transparent to-transparent" />
       </div>
 
-      <div className="p-7">
-        <div className="mb-4 flex items-center space-x-2 text-sm text-[#1E3A5F]/60">
-          <Calendar className="h-4 w-4 text-[#D4A017]" />
-          <span className="font-medium">{formatDate(news.createdAt)}</span>
+      <div className={compact ? 'flex flex-1 flex-col p-5' : 'flex flex-1 flex-col p-6'}>
+        <div className="mb-2 flex items-center gap-1.5 text-xs text-[#1E3A5F]/55">
+          <Calendar className="h-3.5 w-3.5 text-[#D4A017]" />
+          <span>{formatDisplayDate(news.createdAt)}</span>
         </div>
 
         <h3
-          className="mb-4 text-2xl font-bold leading-tight text-[#1E3A5F] transition-colors group-hover:text-[#D4A017]"
+          className={`mb-2 font-bold leading-snug text-[#1E3A5F] transition-colors group-hover:text-[#D4A017] ${
+            compact ? 'text-lg' : 'text-xl'
+          }`}
           style={clampStyle(2)}
         >
           {news.title}
         </h3>
 
-        <p className="mb-5 leading-relaxed text-[#1E3A5F]/70" style={clampStyle(3)}>
+        <p
+          className="mb-4 flex-1 text-sm leading-relaxed text-[#1E3A5F]/65"
+          style={clampStyle(compact ? 2 : 3)}
+        >
           {news.shortDescription}
         </p>
 
-        <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-          <div className="flex items-center gap-1 font-bold text-[#D4A017] transition-all group-hover:gap-2">
-            <span>Doc them</span>
-            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-          </div>
-        </div>
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#D4A017]">
+          Đọc thêm
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </span>
       </div>
     </Link>
   )

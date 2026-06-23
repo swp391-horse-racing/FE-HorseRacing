@@ -3,7 +3,8 @@ import { toast } from 'sonner'
 import { refereeService } from '@/services/refereeService'
 import { publishRaceAssignments } from '@/services/refereeAssignmentService'
 import {
-  getRacePayoutStatusSync,
+  refereePaymentService,
+  isRacePayoutLocked,
   REFEREE_PAYOUTS_UPDATED_EVENT,
 } from '@/services/refereePaymentService'
 import { isRaceCompletedForRefereePayout } from '@/utils/refereePayoutUtils'
@@ -26,21 +27,21 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
   const [loadingReferees, setLoadingReferees] = useState(true)
   const [refereeError, setRefereeError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [payoutStatus, setPayoutStatus] = useState(() =>
-    race?.id ? getRacePayoutStatusSync(race.id) : null,
-  )
+  const [payoutStatus, setPayoutStatus] = useState(null)
 
-  const payoutLocked = Boolean(payoutStatus?.paid)
+  const payoutLocked = isRacePayoutLocked(payoutStatus)
+  const isPaid = payoutStatus?.status === 'PAID'
   const officialRefereeId = resolveAssignedRefereeId(race)
   const isOfficiallyAssigned = Boolean(officialRefereeId)
   const isRaceCompleted = isRaceCompletedForRefereePayout(race, tournament)
 
-  const refreshPayoutStatus = useCallback(() => {
+  const refreshPayoutStatus = useCallback(async () => {
     if (!race?.id) {
       setPayoutStatus(null)
       return
     }
-    setPayoutStatus(getRacePayoutStatusSync(race.id))
+    const status = await refereePaymentService.getRacePayoutStatus(race.id)
+    setPayoutStatus(status)
   }, [race?.id])
 
   useEffect(() => {
@@ -174,7 +175,7 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
         hasSelection={assignments.length > 0}
         isAssigned={isOfficiallyAssigned}
         isRaceCompleted={isRaceCompleted}
-        isPaid={payoutLocked}
+        isPaid={isPaid}
         isLocked={payoutLocked}
       />
 
@@ -206,7 +207,6 @@ export default function JudgeAssigner({ tournament, race, onChangeJudges, onAssi
         race={race}
         refereesById={refereesById}
         payoutLocked={payoutLocked}
-        onPayoutChange={refreshPayoutStatus}
       />
     </div>
   )

@@ -33,6 +33,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import { RefereeLayout } from './RefereeLayout';
+import CheckInStatTile from '@/components/referee/CheckInStatTile';
 import { GlassCard, Pill, PrimaryButton, GhostButton, TextInput, Select } from '@/pages/admin/AdminLayout';
 import { useAuthStore } from '@/store/authStore';
 import { refereeService } from '@/services/refereeService';
@@ -68,7 +69,6 @@ import {
   fetchRaceRules,
   parseRulesLines,
   severityTone,
-  updateGateMap,
 } from '@/utils/refereeRaceUtils';
 import { useRefereeRaces } from './useRefereeRaces';
 import { tournamentService } from '@/services/tournamentService';
@@ -553,11 +553,6 @@ function StartingPositionsTab({
   const horseList = Array.isArray(horses) ? horses : []
   const gateCount = horseList.length
 
-  const setPos = (horseId, value) => {
-    setSaved(false)
-    setPositions((previous) => updateGateMap(previous, horseId, value, horseList))
-  }
-
   const randomize = () => {
     setSaved(false)
     setPositions(randomizeGateMap(horseList))
@@ -598,7 +593,7 @@ function StartingPositionsTab({
         <Info className="w-5 h-5 text-[#D4A017] mt-0.5 shrink-0" />
         <div className="text-xs text-white/70 leading-relaxed">
           Phân chia số cổng xuất phát cho từng ngựa. Vị trí xuất phát sẽ được sử dụng trong bảng ghi kết quả.
-          Có thể nhập thủ công hoặc <span className="text-[#D4A017] font-semibold">bốc thăm ngẫu nhiên</span>.
+          Dùng <span className="text-[#D4A017] font-semibold">Bốc thăm ngẫu nhiên</span> rồi bấm Lưu phân công.
         </div>
       </GlassCard>
 
@@ -682,14 +677,12 @@ function StartingPositionsTab({
                   <td className="px-4 py-3 text-sm text-white/70">{horse.owner}</td>
                   <td className="px-4 py-3 text-sm text-white/70">{horse.jockey}</td>
                   <td className="px-4 py-3 text-center">
-                    <input
-                      type="number"
-                      min={1}
-                      max={gateCount}
-                      value={assignedGate}
-                      onChange={(event) => setPos(horse.id, event.target.value)}
-                      className="w-20 px-3 py-1.5 bg-[#D4A017]/10 border border-[#D4A017]/40 rounded-lg text-[#D4A017] text-sm font-bold text-center focus:outline-none focus:border-[#D4A017] focus:bg-[#D4A017]/20"
-                    />
+                    <span
+                      className="inline-block w-20 px-3 py-1.5 bg-[#D4A017]/10 border border-[#D4A017]/40 rounded-lg text-[#D4A017] text-sm font-bold text-center select-none"
+                      aria-readonly="true"
+                    >
+                      {assignedGate}
+                    </span>
                   </td>
                 </tr>
                   )
@@ -778,9 +771,9 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
       </GlassCard>
 
       <div className="grid grid-cols-3 gap-3">
-        <CountTile label="Có mặt" v={counts.CHECKED_IN} total={horses.length} tone="green" icon={CheckCircle2} />
-        <CountTile label="Chờ" v={counts.REGISTERED} total={horses.length} tone="gold" icon={Clock} />
-        <CountTile label="Vắng mặt" v={counts.ABSENT} total={horses.length} tone="gray" icon={Ban} />
+        <CheckInStatTile label="Có mặt" value={counts.CHECKED_IN} tone="green" icon={CheckCircle2} />
+        <CheckInStatTile label="Chờ" value={counts.REGISTERED} tone="gold" icon={Clock} />
+        <CheckInStatTile label="Vắng mặt" value={counts.ABSENT} tone="gray" icon={Ban} />
       </div>
 
       <GlassCard>
@@ -859,28 +852,6 @@ function CheckInTab({ race, raceId, horses: horsesProp, loading, onReload }) {
         </div>
       </GlassCard>
     </div>
-  );
-}
-
-function CountTile({ label, v, total, tone, icon: Icon }) {
-  const map = {
-    green: 'from-emerald-500/25 to-emerald-500/5 text-emerald-300',
-    gold: 'from-[#D4A017]/25 to-[#D4A017]/5 text-[#D4A017]',
-    gray: 'from-white/15 to-white/5 text-white/60',
-    purple: 'from-purple-500/25 to-purple-500/5 text-purple-300',
-    red: 'from-red-500/25 to-red-500/5 text-red-300',
-  };
-  return (
-    <GlassCard className="p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${map[tone]} border border-white/10 flex items-center justify-center`}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <span className="text-[10px] text-white/40 font-mono">/{total}</span>
-      </div>
-      <div className="text-2xl font-bold text-white">{v}</div>
-      <div className="text-[11px] text-white/50 mt-0.5">{label}</div>
-    </GlassCard>
   );
 }
 

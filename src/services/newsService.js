@@ -8,6 +8,9 @@ const multipartHeaders = {
   'Content-Type': 'multipart/form-data',
 }
 
+/** Danh mục mặc định gửi BE khi admin không chọn danh mục. */
+export const DEFAULT_NEWS_CATEGORY = 'Tin tức'
+
 function buildNewsFormData(payload, imageFile) {
   const formData = new FormData()
 
@@ -129,17 +132,7 @@ export const newsService = {
   },
 
   async getRelatedNews(newsId, limit = 3) {
-    const current = await axiosClient
-      .get(ENDPOINTS.news.byId(newsId))
-      .then(unwrapResponse)
-
-    const list = current?.category
-      ? await axiosClient
-          .get(ENDPOINTS.news.list, {
-            params: { category: current.category },
-          })
-          .then(unwrapResponse)
-      : await axiosClient.get(ENDPOINTS.news.all).then(unwrapResponse)
+    const list = await axiosClient.get(ENDPOINTS.news.all).then(unwrapResponse)
 
     return {
       data: mapNewsList(list)
@@ -153,8 +146,8 @@ export const newsService = {
       title: payload.title,
       summary: payload.summary || payload.shortDescription || '',
       content: payload.content,
-      category: payload.category,
-      featured: !!payload.featured,
+      category: payload.category || DEFAULT_NEWS_CATEGORY,
+      featured: false,
       publishedAt:
         payload.publishedAt ||
         new Date().toISOString().slice(0, 19),
@@ -183,8 +176,8 @@ export const newsService = {
       title: payload.title,
       summary: payload.summary || payload.shortDescription || '',
       content: payload.content,
-      category: payload.category,
-      featured: !!payload.featured,
+      category: payload.category || DEFAULT_NEWS_CATEGORY,
+      featured: false,
     }
 
     const article = imageFile

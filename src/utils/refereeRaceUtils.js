@@ -43,9 +43,34 @@ export function getRefereeRaceTabBucket(race) {
   if (tournament === 'ONGOING') return 'ongoing'
   if (tournament === 'CANCELLED') return 'cancelled'
   const raceStatus = normalizeRaceStatusCode(race?.status)
-  if (raceStatus === 'ONGOING' || raceStatus === 'RESULT_CONFIRMED') return 'ongoing'
+  if (raceStatus === 'RESULT_CONFIRMED') return 'completed'
+  if (raceStatus === 'ONGOING') return 'ongoing'
   if (raceStatus === 'CANCELLED') return 'cancelled'
   return 'upcoming'
+}
+
+/** Race đã kết thúc / đã chốt kết quả — dùng cho trang Lịch sử */
+export function isRefereeRaceHistory(race) {
+  const raceStatus = normalizeRaceStatusCode(race?.status)
+  if (raceStatus === 'RESULT_CONFIRMED') return true
+  if (normalizeTournamentStatusCode(race?.tournamentStatus) === 'COMPLETED') return true
+  return getRefereeRaceTabBucket(race) === 'completed'
+}
+
+export function pickWinnerFromRaceResults(results = []) {
+  const list = Array.isArray(results) ? results : []
+  const winner =
+    list.find((row) => Number(row?.rank) === 1 && String(row?.status ?? '').toUpperCase() === 'FINISHED') ||
+    list.find((row) => Number(row?.rank) === 1)
+  if (!winner) return '--'
+  return winner.horseName?.trim() || winner.jockeyUsername?.trim() || '--'
+}
+
+export function sumRacePrizeAmount(results = []) {
+  return (Array.isArray(results) ? results : []).reduce(
+    (sum, row) => sum + Number(row?.prizeAmount ?? row?.ownerPrizeAmount ?? 0),
+    0,
+  )
 }
 
 export function getRefereeRaceDisplayLabel(race) {
@@ -53,7 +78,8 @@ export function getRefereeRaceDisplayLabel(race) {
   if (tournament === 'COMPLETED') return 'Đã kết thúc'
   if (tournament === 'ONGOING') return 'Đang diễn ra'
   const raceStatus = normalizeRaceStatusCode(race?.status)
-  if (raceStatus === 'ONGOING' || raceStatus === 'RESULT_CONFIRMED') return 'Đang diễn ra'
+  if (raceStatus === 'RESULT_CONFIRMED') return 'Đã chốt kết quả'
+  if (raceStatus === 'ONGOING') return 'Đang diễn ra'
   if (raceStatus === 'SCHEDULED') return 'Sắp diễn ra'
   if (raceStatus === 'CANCELLED') return 'Đã hủy'
   return raceStatusLabel(raceStatus)
@@ -216,6 +242,12 @@ export function isRaceToday(scheduledStartAt) {
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate()
   )
+}
+
+export function isRaceUpcoming(scheduledStartAt) {
+  const d = parseDate(scheduledStartAt)
+  if (!d) return false
+  return d.getTime() >= Date.now()
 }
 
 export async function buildTournamentNameMap(tournamentIds = []) {
@@ -477,6 +509,38 @@ export function isParticipantCheckedIn(status) {
 export function countCheckedInParticipants(participants = []) {
   const list = Array.isArray(participants) ? participants : []
   return list.filter((item) => isParticipantCheckedIn(item?.status)).length
+}
+
+/** Đếm có mặt / chờ / vắng mặt — dùng cho mọi giải được giao */
+export function summarizeParticipantCheckIn(participants = []) {
+  const list = Array.isArray(participants) ? participants : []
+  let presentCount = 0
+  let pendingCount = 0
+  let absentCount = 0
+
+  for (const item of list) {
+    const status = String(item?.status ?? '').toUpperCase()
+    if (status === 'REGISTERED') {
+      pendingCount += 1
+    } else if (status === 'ABSENT') {
+      absentCount += 1
+    } else if (
+      status === 'CHECKED_IN' ||
+      status === 'FINISHED' ||
+      status === 'DNF' ||
+      status === 'DISQUALIFIED'
+    ) {
+      presentCount += 1
+    }
+  }
+
+  return {
+    presentCount,
+    pendingCount,
+    absentCount,
+    total: list.length,
+    checkedInCount: list.filter((item) => String(item?.status ?? '').toUpperCase() === 'CHECKED_IN').length,
+  }
 }
 
 /** Payload gửi BE — ngựa loại chỉ gửi lý do, không có rank */

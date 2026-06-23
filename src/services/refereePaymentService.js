@@ -1,109 +1,65 @@
-export const REFEREE_PAYOUTS_STORAGE_KEY = 'referee:race-payouts'
+import { refereeService } from '@/services/refereeService'
+
 export const REFEREE_PAYOUTS_UPDATED_EVENT = 'referee-payments-updated'
 
-function readStore() {
-  try {
-    const raw = localStorage.getItem(REFEREE_PAYOUTS_STORAGE_KEY)
-    if (!raw) return { byRaceId: {} }
-    const parsed = JSON.parse(raw)
-    return parsed?.byRaceId ? parsed : { byRaceId: {} }
-  } catch {
-    return { byRaceId: {} }
-  }
-}
-
-function writeStore(store) {
-  localStorage.setItem(REFEREE_PAYOUTS_STORAGE_KEY, JSON.stringify(store))
-  window.dispatchEvent(new CustomEvent(REFEREE_PAYOUTS_UPDATED_EVENT))
-}
-
-import { isRaceCompletedForRefereePayout } from '@/utils/refereePayoutUtils'
-
-function mapPayout(record, raceId) {
-  if (!record?.paid) {
-    return {
-      raceId: raceId ?? null,
-      refereeId: null,
-      refereeName: '',
-      amount: 0,
-      paid: false,
-      paidAt: null,
-    }
-  }
-
+function mapPaymentFromApi(item, raceId) {
+  const status = item?.status ?? null
   return {
-    raceId: record.raceId ?? raceId ?? null,
-    refereeId: record.refereeId ?? null,
-    refereeName: record.refereeName ?? '',
-    amount: Number(record.amount ?? 0),
-    paid: true,
-    paidAt: record.paidAt ?? null,
+    id: item?.id ?? null,
+    raceId: item?.raceId ?? raceId ?? null,
+    raceName: item?.raceName ?? '',
+    tournamentId: item?.tournamentId ?? null,
+    tournamentName: item?.tournamentName ?? '',
+    refereeId: item?.refereeId != null ? String(item.refereeId) : null,
+    refereeName: item?.refereeUsername ?? '',
+    amount: Number(item?.amount ?? 0),
+    status,
+    paid: status === 'PAID',
+    paidAt: item?.paidAt ?? null,
+    heldAt: item?.heldAt ?? null,
+    releasedAt: item?.releasedAt ?? null,
+    salaryConfigName: item?.salaryConfigName ?? '',
   }
 }
 
-export function getRacePayoutStatusSync(raceId) {
-  const record = readStore().byRaceId[String(raceId)] ?? null
-  return mapPayout(record, raceId)
+function isAssignmentLocked(status) {
+  return status === 'HELD' || status === 'PAID'
 }
 
-export function isRacePayoutLocked(raceId) {
-  return Boolean(getRacePayoutStatusSync(raceId).paid)
+export function isRacePayoutLocked(payout) {
+  if (!payout) return false
+  if (typeof payout === 'object') return isAssignmentLocked(payout.status)
+  return false
 }
 
 export const refereePaymentService = {
-  getRacePayoutStatus(raceId) {
-    return Promise.resolve(getRacePayoutStatusSync(raceId))
+  async getRacePayoutStatus(raceId) {
+    if (!raceId) {
+      return mapPaymentFromApi(null, raceId)
+    }
+
+    try {
+      const data = await refereeService.getAdminRacePayment(raceId)
+      return mapPaymentFromApi(data, raceId)
+    } catch {
+      return mapPaymentFromApi(null, raceId)
+    }
   },
 
-  payRefereeForRace(raceId, { refereeId, amount, refereeName, refereeEmail, race, tournament }) {
-    if (!isRaceCompletedForRefereePayout(race, tournament)) {
-      return Promise.reject(new Error('RACE_NOT_COMPLETED'))
-    }
-
-    const store = readStore()
-    const key = String(raceId)
-    const existing = store.byRaceId[key]
-    if (existing?.paid) {
-      return Promise.resolve(mapPayout(existing, raceId))
-    }
-
-    const record = {
-      raceId: Number(raceId),
-      refereeId: String(refereeId),
-      refereeName: refereeName ?? '',
-      refereeEmail: refereeEmail ?? '',
-      tournamentId: tournament?.id != null ? String(tournament.id) : '',
-      tournamentName: tournament?.name ?? '',
-      raceName: race?.name ?? '',
-      amount: Number(amount),
-      paid: true,
-      paidAt: new Date().toISOString(),
-    }
-
-    store.byRaceId[key] = record
-    writeStore(store)
-    return Promise.resolve(mapPayout(record, raceId))
+  async getRefereePaymentsFromApi() {
+    const data = await refereeService.getPayments()
+    return (Array.isArray(data) ? data : []).map((item) => mapPaymentFromApi(item))
   },
 
-  getRefereePayoutsForUser(user) {
-    if (!user) return []
-
-    const refereeId = String(user.id ?? user.userId ?? '')
-    const email = user.email?.trim().toLowerCase()
-
-    return Object.values(readStore().byRaceId)
-      .filter(
-        (item) =>
-          item?.paid &&
-          (String(item.refereeId) === refereeId ||
-            (email && item.refereeEmail?.trim().toLowerCase() === email)),
-      )
+  async getRefereePayoutsForUser() {
+    const payments = await this.getRefereePaymentsFromApi()
+    return payments
+      .filter((item) => item.status === 'PAID')
       .sort((first, second) => String(second.paidAt).localeCompare(String(first.paidAt)))
   },
 
-  getRefereePayoutTotal(user) {
-    return refereePaymentService
-      .getRefereePayoutsForUser(user)
-      .reduce((sum, item) => sum + Number(item.amount ?? 0), 0)
+  async getRefereePayoutTotal() {
+    const payouts = await this.getRefereePayoutsForUser()
+    return payouts.reduce((sum, item) => sum + Number(item.amount ?? 0), 0)
   },
 }

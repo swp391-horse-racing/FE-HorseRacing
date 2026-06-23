@@ -5,17 +5,13 @@ import NewsImageUpload from '@/components/news/NewsImageUpload'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/AdminLayout'
 import { GhostButton, PrimaryButton } from '@/components/ui/AdminButton'
-import { inputClass, selectClass, selectOptionClass } from '@/components/ui/styles'
+import { inputClass } from '@/components/ui/styles'
 import { newsService } from '@/services/newsService'
-
-const CATEGORIES = ['Kết quả đua', 'Sự kiện', 'Chân dung', 'Công nghệ', 'Quy định', 'Phỏng vấn']
 
 const emptyForm = {
   title: '',
   shortDescription: '',
   content: '',
-  category: 'Kết quả đua',
-  featured: false,
 }
 
 export default function AdminNewsForm({ articleId }) {
@@ -38,8 +34,6 @@ export default function AdminNewsForm({ articleId }) {
           title: data.title,
           shortDescription: data.shortDescription,
           content: data.content,
-          category: data.category,
-          featured: data.featured,
         })
         setExistingImageUrl(data.imageUrl || '')
       } catch (error) {
@@ -72,8 +66,6 @@ export default function AdminNewsForm({ articleId }) {
         title: form.title.trim(),
         summary: form.shortDescription.trim(),
         content: form.content.trim(),
-        category: form.category,
-        featured: form.featured,
       }
 
       if (isEdit) {
@@ -169,36 +161,6 @@ export default function AdminNewsForm({ articleId }) {
               onFileChange={setImageFile}
               disabled={saving}
             />
-          </section>
-
-          <section className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
-            <label className="mb-2 block text-sm font-semibold text-white/70">Danh mục</label>
-            <select
-              value={form.category}
-              onChange={(e) => update('category', e.target.value)}
-              className={selectClass}
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat} className={selectOptionClass}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </section>
-
-          <section className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
-            <label className="flex cursor-pointer items-start gap-3">
-              <input
-                type="checkbox"
-                checked={form.featured}
-                onChange={(e) => update('featured', e.target.checked)}
-                className="mt-1 h-5 w-5 rounded border-white/20 bg-white/5 text-[#dda50e] focus:ring-[#dda50e]"
-              />
-              <span>
-                <span className="block text-sm font-semibold text-white/80">Bài viết nổi bật</span>
-                <span className="block text-sm text-white/50">Hiển thị ở trang chủ và mục nổi bật</span>
-              </span>
-            </label>
           </section>
         </div>
       </div>

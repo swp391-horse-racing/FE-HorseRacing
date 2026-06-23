@@ -11,7 +11,7 @@ import {
   User,
   Users,
 } from 'lucide-react'
-import HomeFeaturedNews from '@/components/news/HomeFeaturedNews'
+import HomeNewsSection from '@/components/news/HomeNewsSection'
 import { setTournamentBannerFallback, tournamentService } from '@/services/tournamentService'
 import { fmtVND } from '@/utils/formatCurrency'
 import { formatDisplayDate } from '@/utils/dateFormat'
@@ -170,7 +170,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <HomeFeaturedNews />
+      <HomeNewsSection />
 
       <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">

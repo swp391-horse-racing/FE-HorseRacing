@@ -63,6 +63,7 @@ export const ENDPOINTS = {
   },
   races: {
     assignReferee: (id) => `/admin/races/${id}/referee`,
+    refereePayment: (id) => `/admin/races/${id}/referee-payment`,
     adminParticipants: (id) => `/admin/races/${id}/participants`,
     registrations: (id) => `/races/${id}/registrations`,
     results: (id) => `/races/${id}/results`,
@@ -96,6 +97,7 @@ export const ENDPOINTS = {
       `/referee/races/${raceId}/participants/${participantId}/check-in`,
     startRace: (raceId) => `/referee/races/${raceId}/start`,
     finalizeResults: (raceId) => `/referee/races/${raceId}/results/finalize`,
+    payments: '/referee/payments',
   },
   raceRegistrations: {
     ownerList: '/owner/race-registrations',

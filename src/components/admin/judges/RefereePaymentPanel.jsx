@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Banknote, CheckCircle2, LoaderCircle } from 'lucide-react'
+import { Banknote, CheckCircle2, Clock, LoaderCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { toast } from 'sonner'
 import Badge from '@/components/ui/Badge'
-import { GlassCard, PrimaryButton } from '@/pages/admin/AdminLayout'
-import { refereePaymentService, REFEREE_PAYOUTS_UPDATED_EVENT } from '@/services/refereePaymentService'
-import {
-  readRefereeFeeSettings,
-  REFEREE_FEE_UPDATED_EVENT,
-} from '@/services/refereeFeeSettingsService'
+import { GlassCard } from '@/pages/admin/AdminLayout'
+import { refereePaymentService } from '@/services/refereePaymentService'
 import { fmtVND } from '@/utils/formatCurrency'
 import {
   isRaceCompletedForRefereePayout,
@@ -19,17 +14,21 @@ function resolveAssignedRefereeId(race) {
   return race?.raw?.refereeId ?? race?.refereeId ?? null
 }
 
+function statusBadge(status) {
+  if (status === 'PAID') return { tone: 'green', label: 'Đã thanh toán' }
+  if (status === 'HELD') return { tone: 'gold', label: 'Đã giữ lương' }
+  if (status === 'RELEASED') return { tone: 'gray', label: 'Đã hoàn lương' }
+  return { tone: 'gold', label: 'Chưa có' }
+}
+
 export default function RefereePaymentPanel({
   tournament,
   race,
   refereesById = new Map(),
   payoutLocked = false,
-  onPayoutChange,
 }) {
-  const [feeSettings, setFeeSettings] = useState(() => readRefereeFeeSettings())
   const [payout, setPayout] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [paying, setPaying] = useState(false)
 
   const assignedRefereeId = useMemo(() => resolveAssignedRefereeId(race), [race])
   const assignedReferee = assignedRefereeId
@@ -50,7 +49,6 @@ export default function RefereePaymentPanel({
     () => refereePayoutBlockedMessage(race, tournament),
     [race, tournament],
   )
-  const canPay = Boolean(assignedRefereeId) && raceCompleted && !payout?.paid
 
   const loadPayoutStatus = useCallback(async () => {
     if (!race?.id) {
@@ -69,63 +67,8 @@ export default function RefereePaymentPanel({
     loadPayoutStatus()
   }, [loadPayoutStatus, assignedRefereeId])
 
-  useEffect(() => {
-    const handleFeeUpdated = () => setFeeSettings(readRefereeFeeSettings())
-    const handlePayoutUpdated = () => loadPayoutStatus()
-
-    window.addEventListener(REFEREE_FEE_UPDATED_EVENT, handleFeeUpdated)
-    window.addEventListener(REFEREE_PAYOUTS_UPDATED_EVENT, handlePayoutUpdated)
-    return () => {
-      window.removeEventListener(REFEREE_FEE_UPDATED_EVENT, handleFeeUpdated)
-      window.removeEventListener(REFEREE_PAYOUTS_UPDATED_EVENT, handlePayoutUpdated)
-    }
-  }, [loadPayoutStatus])
-
-  const handlePay = async () => {
-    if (!assignedRefereeId) {
-      toast.error('Phải gửi phân công trọng tài trước khi thanh toán')
-      return
-    }
-
-    if (payout?.paid) {
-      toast.info('Cuộc đua này đã được thanh toán lương trọng tài')
-      return
-    }
-
-    if (!raceCompleted) {
-      toast.error(payoutBlockedMessage || 'Cuộc đua chưa hoàn thành')
-      return
-    }
-
-    const amount = feeSettings.perRaceFee
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error('Hãy cấu hình mức lương trọng tài tại Cài đặt hệ thống')
-      return
-    }
-
-    try {
-      setPaying(true)
-      const result = await refereePaymentService.payRefereeForRace(race.id, {
-        refereeId: assignedRefereeId,
-        amount,
-        refereeName: assignedName,
-        refereeEmail: assignedReferee?.email ?? '',
-        race,
-        tournament,
-      })
-      setPayout(result)
-      onPayoutChange?.()
-      toast.success(`Đã ghi nhận thanh toán ${fmtVND(amount)} cho trọng tài`)
-    } catch (error) {
-      if (error?.message === 'RACE_NOT_COMPLETED') {
-        toast.error('Chỉ thanh toán sau khi cuộc đua hoàn thành và chốt kết quả')
-      } else {
-        toast.error('Không thể ghi nhận thanh toán lương trọng tài')
-      }
-    } finally {
-      setPaying(false)
-    }
-  }
+  const badge = statusBadge(payout?.status)
+  const displayAmount = payout?.amount > 0 ? payout.amount : 0
 
   return (
     <GlassCard>
@@ -135,9 +78,9 @@ export default function RefereePaymentPanel({
             <Banknote className="h-5 w-5 text-emerald-300" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Bước 3 · Thanh toán lương trọng tài</h2>
+            <h2 className="text-base font-bold text-white">Bước 3 · Lương trọng tài</h2>
             <p className="text-xs text-white/50">
-              {tournament.name} · {race.name} · Một lần thanh toán / cuộc đua
+              {tournament.name} · {race.name} · Tự động thanh toán khi chốt kết quả
             </p>
           </div>
         </div>
@@ -152,11 +95,13 @@ export default function RefereePaymentPanel({
       <div className="space-y-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-xs uppercase tracking-wider text-white/45">Mức lương cấu hình</p>
+            <p className="text-xs uppercase tracking-wider text-white/45">Mức lương đã giữ</p>
             <p className="mt-2 text-2xl font-bold tabular-nums text-[#dda50e]">
-              {fmtVND(feeSettings.perRaceFee)}
+              {loading ? '...' : fmtVND(displayAmount)}
             </p>
-            <p className="mt-1 text-xs text-white/45">Theo cuộc đua / trọng tài chính</p>
+            <p className="mt-1 text-xs text-white/45">
+              {payout?.salaryConfigName || 'Theo cấu hình khi phân công'}
+            </p>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -176,11 +121,17 @@ export default function RefereePaymentPanel({
 
         {!assignedRefereeId ? (
           <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Hoàn thành bước 2 (gửi phân công) trước khi thanh toán lương.
+            Hoàn thành bước 2 (gửi phân công) trước — hệ thống sẽ giữ lương từ ví admin.
           </div>
         ) : null}
 
-        {assignedRefereeId && !raceCompleted && !payoutLocked ? (
+        {assignedRefereeId && !raceCompleted && payout?.status === 'HELD' ? (
+          <div className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+            Lương đã được giữ. Thanh toán tự động khi trọng tài chốt kết quả cuộc đua.
+          </div>
+        ) : null}
+
+        {assignedRefereeId && !raceCompleted && !payout?.status ? (
           <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             {payoutBlockedMessage}
           </div>
@@ -188,7 +139,7 @@ export default function RefereePaymentPanel({
 
         {payoutLocked ? (
           <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Đã thanh toán cho trọng tài này. Không thể thêm trọng tài khác hoặc thay đổi phân công.
+            Lương đã được giữ hoặc thanh toán — không thể thay đổi phân công trọng tài.
           </div>
         ) : null}
 
@@ -197,47 +148,32 @@ export default function RefereePaymentPanel({
             {loading ? (
               <>
                 <LoaderCircle className="h-4 w-4 animate-spin text-white/45" />
-                Đang kiểm tra trạng thái...
+                Đang tải từ API...
               </>
-            ) : payout?.paid ? (
+            ) : payout?.status === 'PAID' ? (
               <>
                 <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-                Đã thanh toán {fmtVND(payout.amount || feeSettings.perRaceFee)}
+                Đã thanh toán {fmtVND(displayAmount)}
                 {payout.paidAt ? ` · ${new Date(payout.paidAt).toLocaleString('vi-VN')}` : ''}
               </>
-            ) : assignedRefereeId && raceCompleted ? (
-              <>Cuộc đua đã hoàn thành — sẵn sàng thanh toán lương trọng tài</>
+            ) : payout?.status === 'HELD' ? (
+              <>
+                <Clock className="h-4 w-4 text-[#dda50e]" />
+                Đã giữ lương — chờ chốt kết quả để chuyển vào ví trọng tài
+              </>
             ) : assignedRefereeId ? (
-              <>Chờ cuộc đua kết thúc và chốt kết quả</>
+              <>Chờ phân công hoàn tất và hệ thống giữ lương</>
             ) : (
-              <>Chưa thể thanh toán — cần phân công trọng tài trước</>
+              <>Chưa có dữ liệu thanh toán</>
             )}
           </div>
 
-          {payout?.paid ? (
-            <Badge tone="green">Đã thanh toán</Badge>
-          ) : (
-            <Badge tone="gold">Chưa thanh toán</Badge>
-          )}
+          <Badge tone={badge.tone}>{badge.label}</Badge>
         </div>
 
         <p className="text-xs text-white/40">
-          Thanh toán chỉ sau khi trọng tài chốt kết quả. Trọng tài nhận tiền tại Ví của tôi → Lương & phụ cấp.
+          BE tự động thanh toán khi trọng tài chốt kết quả. Trọng tài xem tại Ví của tôi → Lương & phụ cấp.
         </p>
-
-        <div className="flex justify-end">
-          <PrimaryButton
-            icon={Banknote}
-            disabled={paying || loading || !canPay}
-            onClick={handlePay}
-          >
-            {paying
-              ? 'Đang xử lý...'
-              : payout?.paid
-                ? 'Đã thanh toán'
-                : `Thanh toán ${fmtVND(feeSettings.perRaceFee)}`}
-          </PrimaryButton>
-        </div>
       </div>
     </GlassCard>
   )

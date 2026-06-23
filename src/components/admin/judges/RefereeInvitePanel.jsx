@@ -13,7 +13,6 @@ import {
   REFEREE_INVITATIONS_UPDATED_EVENT,
   sendRefereeInvitation,
 } from '@/services/refereeInvitationService'
-import { isRacePayoutLocked, REFEREE_PAYOUTS_UPDATED_EVENT } from '@/services/refereePaymentService'
 import { getApiErrorMessage } from '@/utils/apiError'
 import { refereeInitial } from '@/data/adminJudgeMock'
 
@@ -41,11 +40,8 @@ export default function RefereeInvitePanel({
   const [sendingId, setSendingId] = useState('')
   const [invitations, setInvitations] = useState([])
   const [summary, setSummary] = useState({ pending: 0, accepted: 0, declined: 0 })
-  const [payoutLocked, setPayoutLocked] = useState(() =>
-    race?.id ? isRacePayoutLocked(race.id) : false,
-  )
 
-  const locked = lockedProp ?? payoutLocked
+  const locked = Boolean(lockedProp)
 
   const refreshInvitations = () => {
     if (!race?.id) {
@@ -85,19 +81,13 @@ export default function RefereeInvitePanel({
 
     loadReferees()
     refreshInvitations()
-    setPayoutLocked(race?.id ? isRacePayoutLocked(race.id) : false)
 
     const handleInvitationsUpdated = () => refreshInvitations()
-    const handlePayoutUpdated = () => {
-      setPayoutLocked(race?.id ? isRacePayoutLocked(race.id) : false)
-    }
 
     window.addEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, handleInvitationsUpdated)
-    window.addEventListener(REFEREE_PAYOUTS_UPDATED_EVENT, handlePayoutUpdated)
     return () => {
       cancelled = true
       window.removeEventListener(REFEREE_INVITATIONS_UPDATED_EVENT, handleInvitationsUpdated)
-      window.removeEventListener(REFEREE_PAYOUTS_UPDATED_EVENT, handlePayoutUpdated)
     }
   }, [race?.id])
 

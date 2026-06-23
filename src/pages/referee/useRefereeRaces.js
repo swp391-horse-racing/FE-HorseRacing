@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/authStore'
 import {
   buildTournamentNameMap,
   buildTournamentStatusMap,
-  countCheckedInParticipants,
+  summarizeParticipantCheckIn,
   mapRaceFromApi,
 } from '@/utils/refereeRaceUtils'
 import { getApiErrorMessage } from '@/utils/apiError'
@@ -31,15 +31,17 @@ async function enrichRacesWithCheckInProgress(races) {
 
       try {
         const participants = await refereeService.getRaceParticipants(race.id)
-        const participantCount = participants.length || Number(race.participantCount ?? 0)
-        const checkedInCount = countCheckedInParticipants(participants)
+        const stats = summarizeParticipantCheckIn(participants)
+        const participantCount = stats.total || Number(race.participantCount ?? 0)
 
         return {
           ...race,
           participantCount,
           totalHorses: participantCount,
-          checkedInCount,
-          checkedInDisplay: checkedInCount,
+          checkedInCount: stats.presentCount,
+          checkedInDisplay: stats.presentCount,
+          pendingCheckInCount: stats.pendingCount,
+          absentCount: stats.absentCount,
         }
       } catch {
         return race
@@ -50,7 +52,7 @@ async function enrichRacesWithCheckInProgress(races) {
   return enriched
 }
 
-export function useRefereeRaces() {
+export function useRefereeRaces({ operationOnly = true } = {}) {
   const userId = useAuthStore((state) => state.user?.id ?? state.user?.userId)
   const [races, setRaces] = useState([])
   const [loading, setLoading] = useState(true)
@@ -74,7 +76,7 @@ export function useRefereeRaces() {
     try {
       const data = await loadAssignedRacesFromApi()
       const user = useAuthStore.getState().user
-      const allowed = filterRacesForRefereeOperation(data, user)
+      const allowed = operationOnly ? filterRacesForRefereeOperation(data, user) : data
       const tournamentIds = allowed.map((race) => race.tournamentId)
 
       let nameById = new Map()
@@ -102,7 +104,7 @@ export function useRefereeRaces() {
       setRefreshing(false)
       reloadingRef.current = false
     }
-  }, [userId])
+  }, [userId, operationOnly])
 
   useEffect(() => {
     reload()

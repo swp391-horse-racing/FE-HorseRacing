@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell,
@@ -9,39 +9,127 @@ import {
   Settings as SettingsIcon,
   ArrowRight,
   CheckCheck,
+  LoaderCircle,
+  Banknote,
 } from 'lucide-react';
 import { RefereeLayout } from './RefereeLayout';
 import { GlassCard, Pill, GhostButton } from '@/pages/admin/AdminLayout';
-import { notifications as initial } from './refereeNotificationsMock';
+import { notificationService } from '@/services/notificationService';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 const TYPE_META = {
   reminder: { icon: Clock, tone: 'gold', label: 'Nhắc race' },
   checkin: { icon: ClipboardCheck, tone: 'red', label: 'Check-in' },
   schedule: { icon: Calendar, tone: 'blue', label: 'Lịch' },
   result: { icon: CheckCircle2, tone: 'green', label: 'Kết quả' },
+  payout: { icon: Banknote, tone: 'green', label: 'Lương' },
   system: { icon: SettingsIcon, tone: 'purple', label: 'Hệ thống' },
 };
 
+function mapNotificationType(beType) {
+  const type = String(beType ?? '').toUpperCase();
+  if (type.includes('PAYOUT') || type === 'REFEREE_PAYOUT_PAID') return 'payout';
+  if (type.includes('CHECK_IN')) return 'checkin';
+  if (type.includes('RESULT')) return 'result';
+  if (type.includes('RACE') || type.includes('INVITATION')) return 'schedule';
+  if (type.includes('STARTED')) return 'reminder';
+  return 'system';
+}
+
+function mapNotificationLink(item) {
+  const type = String(item?.type ?? '').toUpperCase();
+  const refId = item?.referenceId;
+  if (!refId) return null;
+  if (type === 'REFEREE_PAYOUT_PAID') return '/referee/wallet';
+  if (type.startsWith('RACE_')) return `/referee/races/${refId}`;
+  return null;
+}
+
+function formatNotificationTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function mapNotification(item) {
+  return {
+    id: item.id,
+    title: item.title || 'Thông báo',
+    body: item.message || '',
+    read: Boolean(item.readAt),
+    time: formatNotificationTime(item.createdAt),
+    type: mapNotificationType(item.type),
+    link: mapNotificationLink(item),
+  };
+}
+
 export function RefereeNotifications() {
-  const [list, setList] = useState(initial);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [tab, setTab] = useState('all');
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await notificationService.getMyNotifications({ size: 50 });
+      setList((response.content || []).map(mapNotification));
+    } catch (err) {
+      setError(getApiErrorMessage(err) || 'Không tải được thông báo');
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const filtered = tab === 'unread' ? list.filter((n) => !n.read) : list;
   const unread = list.filter((n) => !n.read).length;
 
-  const markAll = () => setList((l) => l.map((n) => ({ ...n, read: true })));
-  const markOne = (id) => setList((l) => l.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const markAll = async () => {
+    try {
+      await notificationService.markAllRead();
+      setList((items) => items.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      setError(getApiErrorMessage(err) || 'Không thể đánh dấu đã đọc');
+    }
+  };
+
+  const markOne = async (id) => {
+    try {
+      await notificationService.markRead(id);
+      setList((items) => items.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    } catch {
+      setList((items) => items.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    }
+  };
 
   return (
     <RefereeLayout
       title="Trọng tài · Thông báo"
-      subtitle={`${unread} thông báo chưa đọc`}
+      subtitle={loading ? 'Đang tải...' : `${unread} thông báo chưa đọc`}
       actions={
-        <GhostButton icon={CheckCheck} onClick={markAll} disabled={unread === 0}>
+        <GhostButton icon={CheckCheck} onClick={markAll} disabled={unread === 0 || loading}>
           Đánh dấu đã đọc tất cả
         </GhostButton>
       }
     >
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
+
       <GlassCard>
         <div className="p-5 border-b border-white/10 flex flex-wrap gap-2">
           {[
@@ -64,8 +152,14 @@ export function RefereeNotifications() {
         </div>
 
         <div className="p-3 space-y-2">
-          {filtered.map((n) => {
-            const meta = TYPE_META[n.type];
+          {loading && (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/40">
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+              Đang tải từ GET /notifications...
+            </div>
+          )}
+          {!loading && filtered.map((n) => {
+            const meta = TYPE_META[n.type] ?? TYPE_META.system;
             const Icon = meta.icon;
             const inner = (
               <div className={`p-4 rounded-2xl border transition-all flex items-start gap-3 ${
@@ -108,7 +202,7 @@ export function RefereeNotifications() {
               </button>
             );
           })}
-          {filtered.length === 0 && (
+          {!loading && filtered.length === 0 && (
             <div className="text-center py-12 text-white/40 text-sm">
               <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
               Không có thông báo nào.

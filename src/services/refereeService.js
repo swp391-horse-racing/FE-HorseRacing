@@ -6,6 +6,16 @@ import {
   readRefereeFeeSettings,
   DEFAULT_REFEREE_PER_RACE_FEE,
 } from '@/services/refereeFeeSettingsService'
+import {
+  buildTournamentNameMap,
+  buildTournamentStatusMap,
+  summarizeParticipantCheckIn,
+  mapRaceFromApi,
+  isRefereeRaceHistory,
+  pickWinnerFromRaceResults,
+  sumRacePrizeAmount,
+} from '@/utils/refereeRaceUtils'
+import { fmtVND } from '@/utils/formatCurrency'
 
 function mapReferee(user, profile) {
   const experienceYears = Number(profile?.experienceYears ?? 0)
@@ -95,6 +105,100 @@ export const refereeService = {
     return Array.isArray(data) ? data : []
   },
 
+  async enrichRacesCheckIn(races) {
+    const list = Array.isArray(races) ? races : []
+    return Promise.all(
+      list.map(async (race) => {
+        if (!race?.id) return race
+        try {
+          const participants = await this.getRaceParticipants(race.id)
+          const stats = summarizeParticipantCheckIn(participants)
+          const participantCount = stats.total || Number(race.participantCount ?? 0)
+          return {
+            ...race,
+            participantCount,
+            totalHorses: participantCount,
+            checkedInCount: stats.presentCount,
+            checkedInDisplay: stats.presentCount,
+            pendingCheckInCount: stats.pendingCount,
+            absentCount: stats.absentCount,
+          }
+        } catch {
+          return {
+            ...race,
+            pendingCheckInCount: 0,
+            absentCount: 0,
+          }
+        }
+      }),
+    )
+  },
+
+  /** Tổng có mặt / chờ / vắng trên mọi race & giải được phân công */
+  async getCheckInStatsAcrossAllRaces() {
+    const races = await this.getAssignedRaces()
+    if (!races.length) {
+      return { present: 0, pending: 0, absent: 0 }
+    }
+
+    const participantLists = await Promise.all(
+      races.map((race) => this.getRaceParticipants(race.id).catch(() => [])),
+    )
+
+    return participantLists.reduce(
+      (totals, participants) => {
+        const stats = summarizeParticipantCheckIn(participants)
+        return {
+          present: totals.present + stats.presentCount,
+          pending: totals.pending + stats.pendingCount,
+          absent: totals.absent + stats.absentCount,
+        }
+      },
+      { present: 0, pending: 0, absent: 0 },
+    )
+  },
+
+  async loadAssignedRacesMapped() {
+    const list = await this.getAssignedRaces()
+    const tournamentIds = list.map((race) => race.tournamentId)
+
+    let nameById = new Map()
+    let statusById = new Map()
+    try {
+      ;[nameById, statusById] = await Promise.all([
+        buildTournamentNameMap(tournamentIds),
+        buildTournamentStatusMap(tournamentIds),
+      ])
+    } catch {
+      // ignore
+    }
+
+    return list.map((raw, index) =>
+      mapRaceFromApi(
+        {
+          ...raw,
+          tournamentName: raw.tournamentName || nameById.get(String(raw.tournamentId)),
+          tournamentStatus: statusById.get(String(raw.tournamentId)) ?? '',
+        },
+        index,
+      ),
+    )
+  },
+
+  async loadAssignedRacesEnriched() {
+    const mapped = await this.loadAssignedRacesMapped()
+    return this.enrichRacesCheckIn(mapped)
+  },
+
+  async getPayments() {
+    const data = await axiosClient.get(ENDPOINTS.referee.payments).then(unwrapResponse)
+    return Array.isArray(data) ? data : []
+  },
+
+  async getAdminRacePayment(raceId) {
+    return axiosClient.get(ENDPOINTS.races.refereePayment(raceId)).then(unwrapResponse)
+  },
+
   async getDashboard() {
     return axiosClient.get(ENDPOINTS.referee.dashboard).then(unwrapResponse)
   },
@@ -165,5 +269,35 @@ export const refereeService = {
   async getRaceResults(raceId) {
     const data = await axiosClient.get(ENDPOINTS.races.results(raceId)).then(unwrapResponse)
     return Array.isArray(data) ? data : []
+  },
+
+  async loadRefereeHistoryRaces() {
+    const mapped = await this.loadAssignedRacesMapped()
+    const history = mapped.filter((race) => isRefereeRaceHistory(race))
+    const enriched = await this.enrichRacesCheckIn(history)
+
+    const withResults = await Promise.all(
+      enriched.map(async (race) => {
+        if (!race?.id) return race
+        try {
+          const results = await this.getRaceResults(race.id)
+          const prizeTotal = sumRacePrizeAmount(results)
+          return {
+            ...race,
+            winnerDisplay: pickWinnerFromRaceResults(results),
+            prizeDisplay: prizeTotal > 0 ? fmtVND(prizeTotal) : '—',
+            resultsCount: results.length,
+          }
+        } catch {
+          return race
+        }
+      }),
+    )
+
+    return withResults.sort((first, second) => {
+      const left = new Date(first.resultFinalizedAt || first.scheduledStartAt || 0).getTime()
+      const right = new Date(second.resultFinalizedAt || second.scheduledStartAt || 0).getTime()
+      return right - left
+    })
   },
 }

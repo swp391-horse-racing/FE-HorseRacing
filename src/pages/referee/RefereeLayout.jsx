@@ -8,17 +8,14 @@ import {
   Flag,
   ClipboardCheck,
   History,
-  Bell,
   Search,
   ChevronDown,
   LogOut,
   Menu,
   X,
-  Mail,
   Gavel,
   Wallet,
 } from 'lucide-react';
-import { useRefereeViolations } from './refereeViolationsMock';
 
 export const REFEREE_NAV = [
   { label: 'Tổng quan', to: '/referee', icon: LayoutDashboard },
@@ -34,7 +31,6 @@ export function RefereeLayout({ children, title, subtitle, actions }) {
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
-  const violations = useRefereeViolations();
 
   const displayName = user?.fullName || user?.username || 'Trọng tài';
   const avatarLetter = displayName.charAt(0).toUpperCase();
@@ -82,13 +78,6 @@ export function RefereeLayout({ children, title, subtitle, actions }) {
               >
                 <Icon className={`w-4 h-4 ${active ? 'text-[#D4A017]' : ''}`} />
                 <span className="font-semibold">{item.label}</span>
-                {item.to === '/referee/violations' && violations.length > 0 && (
-                  <span className={`ml-auto min-w-[1.5rem] px-1.5 py-0.5 rounded-full text-[10px] font-bold text-center ${
-                    active ? 'bg-[#D4A017] text-[#0A1628]' : 'bg-red-500/20 text-red-200 border border-red-500/30'
-                  }`}>
-                    {violations.length}
-                  </span>
-                )}
               </Link>
             );
           })}
@@ -130,16 +119,7 @@ export function RefereeLayout({ children, title, subtitle, actions }) {
               to={WALLET_PATHS.REFEREE}
               walletMode="user"
               theme="dark"
-              includeRefereeSalary
             />
-            <button className="p-2 hover:bg-white/5 rounded-lg relative">
-              <Mail className="w-5 h-5 text-white/60" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#D4A017] rounded-full" />
-            </button>
-            <Link to="/referee/notifications" className="p-2 hover:bg-white/5 rounded-lg relative">
-              <Bell className="w-5 h-5 text-white/60" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full" />
-            </Link>
             <div className="flex items-center gap-2 pl-2 ml-2 border-l border-white/10">
               <div className="w-9 h-9 bg-gradient-to-br from-[#D4A017] to-[#B8941F] rounded-xl flex items-center justify-center font-bold shadow-md shadow-[#D4A017]/30">
                 {avatarLetter}

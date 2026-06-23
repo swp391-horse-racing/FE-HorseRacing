@@ -29,7 +29,7 @@ export function mapNotification(notification) {
     title: notification?.title || 'Thông báo',
     message: notification?.message || notification?.content || '',
     readStatus: notification?.readStatus,
-    read: notification?.readStatus === 'READ' || notification?.read === true,
+    read: notification?.readStatus === 'READ' || notification?.read === true || Boolean(notification?.readAt),
     createdAt: notification?.createdAt,
     metadata: notification?.metadata,
     raw: notification,
