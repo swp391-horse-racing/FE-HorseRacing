@@ -52,10 +52,10 @@ export default function HomePage() {
   )
 
   const statistics = [
-    { label: 'Tong giai dau', value: tournaments.length, icon: Trophy },
-    { label: 'Cuoc dua', value: totalRaces, icon: Award },
-    { label: 'Luot dang ky', value: totalRegistrations, icon: Users },
-    { label: 'Du lieu API', value: loadingTournaments ? '...' : 'Live', icon: BarChart3 },
+    { label: 'Tổng giải đấu', value: tournaments.length, icon: Trophy },
+    { label: 'Cuộc đua', value: totalRaces, icon: Award },
+    { label: 'Lượt đăng ký', value: totalRegistrations, icon: Users },
+    { label: 'Trạng thái', value: loadingTournaments ? '...' : 'Trực tuyến', icon: BarChart3 },
   ]
 
   return (
@@ -76,18 +76,18 @@ export default function HomePage() {
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#D4A017]/30 bg-[#D4A017]/10 px-4 py-2">
               <Trophy className="h-4 w-4 text-[#D4A017]" />
               <span className="text-sm font-semibold text-[#D4A017]">
-                Horse racing tournament platform
+                Nền tảng giải đua ngựa
               </span>
             </div>
 
             <h1 className="mb-6 text-5xl font-bold leading-tight text-[#1E3A5F] md:text-7xl">
-              Trai nghiem giai dua ngua
-              <span className="block text-[#D4A017]">chuyen nghiep</span>
+              Trải nghiệm giải đua ngựa
+              <span className="block text-[#D4A017]">chuyên nghiệp</span>
             </h1>
 
             <p className="mb-10 text-xl leading-relaxed text-[#1E3A5F]/70">
-              Theo doi giai dau, lich race, ket qua, leaderboard va cac keo dang mo tu du lieu
-              backend that.
+              Theo dõi giải đấu, lịch đua, kết quả, bảng xếp hạng và các kèo cược đang mở — cập nhật
+              trực tiếp từ hệ thống.
             </p>
 
             <div className="flex flex-col gap-4 sm:flex-row">
@@ -96,7 +96,7 @@ export default function HomePage() {
                 className="group flex items-center justify-center gap-2 rounded-2xl bg-[#D4A017] px-8 py-4 font-semibold text-white shadow-xl shadow-[#D4A017]/30 transition hover:bg-[#B8941F]"
               >
                 <Calendar className="h-5 w-5" />
-                <span>Xem giai dau</span>
+                <span>Xem giải đấu</span>
                 <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
 
@@ -105,7 +105,7 @@ export default function HomePage() {
                 className="flex items-center justify-center gap-2 rounded-2xl border-2 border-[#1E3A5F]/20 bg-white px-8 py-4 font-semibold text-[#1E3A5F] shadow-lg transition hover:border-[#1E3A5F]/40 hover:bg-[#1E3A5F]/5"
               >
                 <User className="h-5 w-5" />
-                <span>Dang ky tham gia</span>
+                <span>Đăng ký tham gia</span>
               </Link>
             </div>
           </div>
@@ -115,15 +115,15 @@ export default function HomePage() {
       <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            title="Giai dau sap dien ra"
-            description="Danh sach nay duoc lay tu public tournament API."
+            title="Giải đấu sắp diễn ra"
+            description="Các giải đấu đang mở đăng ký và sắp tổ chức."
             to="/tournaments"
           />
 
           {loadingTournaments ? (
             <LoadingCards />
           ) : upcomingTournaments.length === 0 ? (
-            <EmptyBand icon={Search} text="Hien chua co giai dau public nao." />
+            <EmptyBand icon={Search} text="Hiện chưa có giải đấu nào." />
           ) : (
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
               {upcomingTournaments.map((tournament) => (
@@ -137,19 +137,19 @@ export default function HomePage() {
       <section className="bg-[#FAFAFA] py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            title="Bang xep hang ngua"
-            description="Se hien thi khi backend expose API ranking tong hop cho spectator."
+            title="Bảng xếp hạng ngựa"
+            description="Sẽ cập nhật khi có dữ liệu xếp hạng tổng hợp."
             to="/rankings"
           />
-          <EmptyBand icon={Trophy} text="Chua co API ranking tong hop. Khong hien thi du lieu mock." />
+          <EmptyBand icon={Trophy} text="Chưa có dữ liệu bảng xếp hạng." />
         </div>
       </section>
 
       <section className="bg-[#FAFAFA] py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
-            <h2 className="mb-4 text-4xl font-bold text-[#1E3A5F]">Thong ke he thong</h2>
-            <p className="text-[#1E3A5F]/60">So lieu tong hop tu public tournament API.</p>
+            <h2 className="mb-4 text-4xl font-bold text-[#1E3A5F]">Thống kê hệ thống</h2>
+            <p className="text-[#1E3A5F]/60">Số liệu tổng hợp từ các giải đấu trên hệ thống.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -175,18 +175,18 @@ export default function HomePage() {
       <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           <span className="mb-3 inline-block rounded-full border border-[#D4A017]/30 bg-[#D4A017]/10 px-4 py-1 text-xs font-semibold uppercase tracking-widest text-[#D4A017]">
-            About Us
+            Giới thiệu
           </span>
-          <h2 className="mb-4 text-4xl font-bold text-[#1E3A5F]">Gioi thieu he thong</h2>
+          <h2 className="mb-4 text-4xl font-bold text-[#1E3A5F]">Giới thiệu hệ thống</h2>
           <p className="mx-auto mb-6 max-w-2xl text-[#1E3A5F]/60">
-            Nen tang quan ly giai dua ngua: tournament, race schedule, result, wallet va
-            spectator betting.
+            Nền tảng quản lý giải đua ngựa: giải đấu, lịch đua, kết quả, ví điện tử và cá cược
+            cho khán giả.
           </p>
           <Link
             to="/about"
             className="inline-flex items-center gap-2 font-semibold text-[#D4A017] transition hover:text-[#B8941F]"
           >
-            <span>Xem chi tiet</span>
+            <span>Xem chi tiết</span>
             <ChevronRight className="h-5 w-5" />
           </Link>
         </div>
@@ -206,7 +206,7 @@ function SectionHeader({ title, description, to }) {
         to={to}
         className="hidden items-center gap-2 font-semibold text-[#D4A017] transition hover:text-[#B8941F] md:flex"
       >
-        <span>Xem tat ca</span>
+        <span>Xem tất cả</span>
         <ChevronRight className="h-5 w-5" />
       </Link>
     </div>
@@ -238,12 +238,12 @@ function TournamentCard({ tournament }) {
         </h3>
         <div className="mb-6 space-y-3 text-sm text-[#1E3A5F]/60">
           <Meta icon={Calendar} text={`${formatDisplayDate(tournament.startDate)} - ${formatDisplayDate(tournament.endDate)}`} />
-          <Meta icon={MapPin} text={tournament.location || tournament.provinceName || 'Chua cap nhat'} />
+          <Meta icon={MapPin} text={tournament.location || tournament.provinceName || 'Chưa cập nhật'} />
           <Meta icon={Trophy} text={fmtVND(tournament.prizePool)} />
         </div>
         <div className="flex items-center justify-between border-t border-gray-200 pt-4 text-sm">
-          <Meta icon={Users} text={`${tournament.registeredHorses || 0} dang ky`} />
-          <span className="font-semibold text-[#D4A017]">Chi tiet</span>
+          <Meta icon={Users} text={`${tournament.registeredHorses || 0} đăng ký`} />
+          <span className="font-semibold text-[#D4A017]">Chi tiết</span>
         </div>
       </div>
     </Link>
