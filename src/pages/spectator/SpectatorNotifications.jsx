@@ -91,11 +91,10 @@ export default function SpectatorNotifications() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`rounded-full border px-4 py-2 text-sm font-black transition ${
-                tab === item.id
-                  ? 'border-[#D4A017]/50 bg-[#D4A017]/15 text-[#D4A017]'
-                  : 'border-white/10 bg-white/[0.04] text-white/55 hover:text-white'
-              }`}
+              className={`rounded-full border px-4 py-2 text-sm font-black transition ${tab === item.id
+                ? 'border-[#D4A017]/50 bg-[#D4A017]/15 text-[#D4A017]'
+                : 'border-white/10 bg-white/[0.04] text-white/55 hover:text-white'
+                }`}
             >
               {item.label} ({item.count})
             </button>
@@ -109,11 +108,10 @@ export default function SpectatorNotifications() {
             {visibleNotifications.map((notification) => (
               <article
                 key={notification.id}
-                className={`rounded-xl border p-4 ${
-                  notification.read
-                    ? 'border-white/10 bg-white/[0.03]'
-                    : 'border-[#D4A017]/30 bg-[#D4A017]/10'
-                }`}
+                className={`rounded-xl border p-4 ${notification.read
+                  ? 'border-white/10 bg-white/[0.03]'
+                  : 'border-[#D4A017]/30 bg-[#D4A017]/10'
+                  }`}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">

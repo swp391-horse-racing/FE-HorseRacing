@@ -165,11 +165,10 @@ export default function SpectatorBetting() {
                   key={market.id}
                   type="button"
                   onClick={() => setSelectedMarketId(String(market.id))}
-                  className={`w-full rounded-xl border p-4 text-left transition ${
-                    String(selectedMarket?.id) === String(market.id)
-                      ? "border-[#D4A017]/60 bg-[#D4A017]/12"
-                      : "border-white/10 bg-white/[0.035] hover:border-white/25"
-                  }`}
+                  className={`w-full rounded-xl border p-4 text-left transition ${String(selectedMarket?.id) === String(market.id)
+                    ? "border-[#D4A017]/60 bg-[#D4A017]/12"
+                    : "border-white/10 bg-white/[0.035] hover:border-white/25"
+                    }`}
                 >
                   <div className="font-black text-white">{market.raceName}</div>
                   <div className="mt-1 text-sm text-white/50">
@@ -227,12 +226,11 @@ export default function SpectatorBetting() {
                           onClick={() =>
                             setSelectedParticipantId(option.participantId)
                           }
-                          className={`rounded-xl border p-4 text-left transition ${
-                            String(selectedParticipantId) ===
+                          className={`rounded-xl border p-4 text-left transition ${String(selectedParticipantId) ===
                             String(option.participantId)
-                              ? "border-[#D4A017]/60 bg-[#D4A017]/12"
-                              : "border-white/10 bg-white/[0.035] hover:border-white/25"
-                          }`}
+                            ? "border-[#D4A017]/60 bg-[#D4A017]/12"
+                            : "border-white/10 bg-white/[0.035] hover:border-white/25"
+                            }`}
                         >
                           <div className="font-black text-white">
                             {option.horseName}
