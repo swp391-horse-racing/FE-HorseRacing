@@ -23,6 +23,37 @@ function marketTone(status) {
   return 'border-white/10 bg-white/[0.05] text-white/55'
 }
 
+const STARTED_RACE_STATUSES = new Set([
+  'ONGOING',
+  'RESULT_CONFIRMED',
+  'COMPLETED',
+  'CANCELLED',
+  'FINISHED',
+])
+
+function getRaceStartTime(race) {
+  const value = race?.scheduledStartAt || race?.raw?.scheduledStartAt
+  if (!value) return null
+
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? null : time
+}
+
+function isRaceBeforeStart(race) {
+  const status = String(race?.statusCode || race?.raw?.status || '').toUpperCase()
+  if (STARTED_RACE_STATUSES.has(status)) return false
+
+  const startTime = getRaceStartTime(race)
+  return startTime != null && startTime > Date.now()
+}
+
+function keepBettableUpcomingRaces(tournament) {
+  if (!tournament) return null
+
+  const races = (Array.isArray(tournament.races) ? tournament.races : []).filter(isRaceBeforeStart)
+  return { ...tournament, races }
+}
+
 export default function AdminBetMarketsPage() {
   const [tournaments, setTournaments] = useState([])
   const [selectedTournamentId, setSelectedTournamentId] = useState('')
@@ -50,6 +81,7 @@ export default function AdminBetMarketsPage() {
   )
 
   const selectedRaceMarket = selectedRace ? marketByRaceId[String(selectedRace.id)] : null
+
   const loadBaseData = async () => {
     setLoading(true)
     try {
@@ -58,11 +90,17 @@ export default function AdminBetMarketsPage() {
         adminBettingService.getMarkets(),
       ])
       const nextTournaments = tournamentResponse.data || []
+
       setTournaments(nextTournaments)
       setMarkets(marketList)
 
       if (!selectedTournamentId && nextTournaments[0]?.id) {
         setSelectedTournamentId(String(nextTournaments[0].id))
+      }
+      if (!nextTournaments.length) {
+        setSelectedTournamentId('')
+        setSelectedTournament(null)
+        setSelectedRaceId('')
       }
     } catch (error) {
       toast.error(getApiErrorMessage(error))
@@ -81,8 +119,9 @@ export default function AdminBetMarketsPage() {
     setLoadingTournament(true)
     try {
       const response = await tournamentService.getAdminTournament(tournamentId)
-      setSelectedTournament(response.data)
-      const firstRaceId = response.data?.races?.[0]?.id
+      const nextTournament = keepBettableUpcomingRaces(response.data)
+      setSelectedTournament(nextTournament)
+      const firstRaceId = nextTournament?.races?.[0]?.id
       setSelectedRaceId(firstRaceId ? String(firstRaceId) : '')
     } catch (error) {
       setSelectedTournament(null)
@@ -209,7 +248,9 @@ export default function AdminBetMarketsPage() {
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold text-white">Chon tournament va race</h2>
-              <p className="text-sm text-white/50">Moi race chi co mot market active: DRAFT, OPEN hoac CLOSED.</p>
+              <p className="text-sm text-white/50">
+                Chi hien race chua den gio bat dau de cau hinh cuoc.
+              </p>
             </div>
             <button
               type="button"
@@ -287,7 +328,7 @@ export default function AdminBetMarketsPage() {
                   })
                 ) : (
                   <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-white/45">
-                    Tournament nay chua co race de cau hinh cuoc.
+                    Tournament nay khong con race chua dien ra de cau hinh cuoc.
                   </div>
                 )}
               </div>

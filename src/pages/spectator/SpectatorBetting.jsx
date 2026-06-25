@@ -26,15 +26,16 @@ export default function SpectatorBetting() {
     setError("");
     setNotice("");
     try {
-      const dashboard = await spectatorService.getDashboard();
-      if (dashboard?.businessSummary?.marketplaceEnabled === false) {
+      const [dashboard, bettableMarkets] = await Promise.all([
+        spectatorService.getDashboard().catch(() => null),
+        bettingService.getBettableRaces(),
+      ]);
+      if (dashboard?.businessSummary?.marketplaceEnabled === false && bettableMarkets.length === 0) {
         setNotice("Tính năng đặt cược hiện đang tạm tắt trên backend.");
         setMarkets([]);
         setSelectedMarketId("");
         return;
       }
-
-      const bettableMarkets = await bettingService.getBettableRaces();
 
       if (raceId) {
         try {

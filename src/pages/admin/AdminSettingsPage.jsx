@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
-import { BadgePercent, Banknote, DollarSign, FileText, MapPin, Plus, Ruler, Settings } from 'lucide-react'
+import { Banknote, DollarSign, FileText, MapPin, Plus, Ruler, Settings } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
-import BettingSettingsPanel from '@/components/admin/BettingSettingsPanel'
 import LocationSettingsPanel from '@/components/admin/LocationSettingsPanel'
 import RaceDistanceSettingsPanel from '@/components/admin/RaceDistanceSettingsPanel'
 import DefaultRulesSettingsPanel from '@/components/admin/DefaultRulesSettingsPanel'
@@ -13,7 +12,6 @@ const tabs = [
   { key: 'rules', label: 'Luat mac dinh', icon: FileText },
   { key: 'locations', label: 'Tinh & dia diem dua', icon: MapPin },
   { key: 'race-distances', label: 'Khoang cach dua', icon: Ruler },
-  { key: 'betting', label: 'Bat cuoc & thue', icon: BadgePercent },
   { key: 'referee-fee', label: 'Luong trong tai', icon: Banknote },
 ]
 
@@ -84,8 +82,6 @@ export default function AdminSettingsPage() {
           <RaceDistanceSettingsPanel />
         ) : tab === 'rules' ? (
           <DefaultRulesSettingsPanel />
-        ) : tab === 'betting' ? (
-          <BettingSettingsPanel />
         ) : tab === 'referee-fee' ? (
           <RefereeFeeSettingsPanel />
         ) : (

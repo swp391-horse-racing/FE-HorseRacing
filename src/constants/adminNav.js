@@ -19,5 +19,5 @@ export const ADMIN_NAV = [
   { label: 'Ngua', to: '/admin/horses', icon: PawPrint },
   { label: 'Vi he thong', to: '/admin/wallet', icon: Wallet },
   { label: 'Cai dat', to: '/admin/settings', icon: Settings },
-  { label: 'Cau hinh cuoc race', to: '/admin/bet-markets', icon: BadgePercent, indent: true },
+  { label: 'Cau hinh cuoc race', to: '/admin/bet-markets', icon: BadgePercent },
 ]
