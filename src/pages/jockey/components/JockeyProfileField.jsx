@@ -1,6 +1,6 @@
-export function JockeyProfileField({ label, children }) {
+export function JockeyProfileField({ label, children, className = "" }) {
   return (
-    <div className="space-y-1.5">
+    <div className={`space-y-1.5 ${className}`.trim()}>
       <label className="text-xs text-white/50 font-semibold uppercase tracking-wider">
         {label}
       </label>

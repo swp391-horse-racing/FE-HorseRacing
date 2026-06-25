@@ -195,4 +195,47 @@ export const jockeyService = {
     const data = await axiosClient.put(ENDPOINTS.jockeys.jockeyRejectInvitation(id), payload).then(unwrapResponse)
     return mapJockeyInvitation(data)
   },
+
+  async getMyProfile() {
+    const data = await axiosClient.get(ENDPOINTS.jockeys.profile).then(unwrapResponse)
+    return mapJockeyProfile(data)
+  },
+
+  async updateMyProfile(payload = {}, files = {}) {
+    const formData = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    Object.entries(files).forEach(([key, file]) => {
+      if (file) formData.append(key, file)
+    })
+
+    const data = await axiosClient
+      .put(ENDPOINTS.jockeys.profile, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then(unwrapResponse)
+
+    return mapJockeyProfile(data)
+  },
+
+  async getDashboard() {
+    return axiosClient.get(ENDPOINTS.jockeys.dashboard).then(unwrapResponse)
+  },
+
+  async getRaces() {
+    const data = await axiosClient.get(ENDPOINTS.jockeys.races).then(unwrapResponse)
+    return Array.isArray(data) ? data : []
+  },
+
+  async getPerformance() {
+    return axiosClient.get(ENDPOINTS.jockeys.performance).then(unwrapResponse)
+  },
+
+  async getPrizes() {
+    const data = await axiosClient.get(ENDPOINTS.jockeys.prizes).then(unwrapResponse)
+    return Array.isArray(data) ? data : []
+  },
 }

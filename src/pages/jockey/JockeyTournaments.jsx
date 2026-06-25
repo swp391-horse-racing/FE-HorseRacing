@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   Clock,
@@ -17,10 +17,15 @@ import {
 } from "@/services/tournamentService";
 import { GlassCard, Pill } from "../admin/AdminLayout";
 import { JockeyLayout } from "./JockeyLayout";
-import { invitations, schedules, fmt } from "./data";
 import { JockeyInfoRow } from "./components/JockeyInfoRow";
 import { formatDisplayDate } from "@/utils/dateFormat";
+import { fmtVND } from "@/utils/formatCurrency";
 import { useFetch } from "@/hooks/useFetch";
+import { jockeyService } from "@/services/jockeyService";
+import {
+  buildJockeySchedules,
+  getTournamentRelation,
+} from "@/utils/jockeyViewUtils";
 
 const DEFAULT_STATUS_FILTERS = [
   "Tất cả",
@@ -40,39 +45,36 @@ function formatCapacity(tournament) {
     : `${registeredHorses} đăng ký`;
 }
 
-function getJockeyRelation(tournament) {
-  const assignedSchedule = schedules.find(
-    (schedule) => schedule.tournament === tournament.name,
-  );
-  if (assignedSchedule) {
-    return {
-      label: `Đã có lịch`,
-      tone: assignedSchedule.checkedIn ? "green" : assignedSchedule.statusTone,
-      detail: assignedSchedule.race,
-    };
-  }
-
-  const invitation = invitations.find(
-    (item) => item.tournament === tournament.name,
-  );
-  if (invitation) {
-    return {
-      label: "Có lời mời",
-      tone: invitation.statusTone,
-      detail: invitation.status,
-    };
-  }
-
-  return {
-    label: "Theo dõi",
-    tone: "gray",
-    detail: "Chưa có lịch/lời mời",
-  };
-}
-
 export function JockeyTournaments() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Tất cả");
+  const [invitations, setInvitations] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadJockeyData() {
+      try {
+        const [inviteData, raceData] = await Promise.all([
+          jockeyService.getJockeyInvitations(),
+          jockeyService.getRaces(),
+        ]);
+        if (!active) return;
+        setInvitations(inviteData);
+        setSchedules(buildJockeySchedules(raceData, inviteData));
+      } catch {
+        if (!active) return;
+        setInvitations([]);
+        setSchedules([]);
+      }
+    }
+
+    loadJockeyData();
+    return () => {
+      active = false;
+    };
+  }, []);
   const { data, loading, error: fetchError, refetch } = useFetch(
     async () => {
       const response = await tournamentService.getPublicTournaments();
@@ -171,7 +173,7 @@ export function JockeyTournaments() {
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {filtered.map((tournament) => {
-            const relation = getJockeyRelation(tournament);
+            const relation = getTournamentRelation(tournament, invitations, schedules);
 
             return (
               <GlassCard key={tournament.id} className="overflow-hidden">
@@ -190,7 +192,7 @@ export function JockeyTournaments() {
                   <div className="absolute bottom-3 right-3 text-right">
                     <div className="text-[10px] text-white/60">Prize Pool</div>
                     <div className="text-sm font-bold text-[#D4A017]">
-                      {fmt(tournament.prizePool)}
+                      {fmtVND(tournament.prizePool)}
                     </div>
                   </div>
                 </div>

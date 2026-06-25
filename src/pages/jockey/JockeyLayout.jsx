@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -19,6 +19,9 @@ import {
 import RoleWalletBadge from "@/components/wallet/RoleWalletBadge";
 import { WALLET_PATHS } from "@/constants/walletPaths";
 import { useAuthStore } from "@/store/authStore";
+import { jockeyService } from "@/services/jockeyService";
+import { rankingService } from "@/services/rankingService";
+import { mapRankingEntry } from "@/utils/jockeyViewUtils";
 
 const JOCKEY_NAV = [
   { label: "Dashboard", to: "/jockey", icon: LayoutDashboard },
@@ -26,7 +29,7 @@ const JOCKEY_NAV = [
   { label: "Lời mời thi đấu", to: "/jockey/invitations", icon: Mail },
   { label: "Giải đấu", to: "/jockey/tournaments", icon: Flag },
   { label: "Lịch thi đấu", to: "/jockey/schedules", icon: Calendar },
-  { label: "Ngựa được assign", to: "/jockey/horses", icon: PawPrint },
+  { label: "Ngựa được giao", to: "/jockey/horses", icon: PawPrint },
   { label: "Kết quả thi đấu", to: "/jockey/results", icon: BarChart3 },
   { label: "Bảng xếp hạng", to: "/jockey/rankings", icon: Trophy },
   { label: "Ví của tôi", to: "/jockey/wallet", icon: Wallet },
@@ -38,8 +41,41 @@ export function JockeyLayout({ children, title, subtitle, actions }) {
   const [open, setOpen] = useState(false);
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
+  const userId = user?.id ?? user?.userId;
   const displayName = user?.fullName || user?.username || "Jockey";
   const avatarLetter = displayName.charAt(0).toUpperCase();
+  const [sidebarMeta, setSidebarMeta] = useState({ status: "Đang tải...", rank: null });
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSidebarMeta() {
+      try {
+        const [profile, rankingData] = await Promise.all([
+          jockeyService.getMyProfile().catch(() => null),
+          rankingService.getRankings(50).catch(() => ({ jockeys: [] })),
+        ]);
+        if (!active) return;
+
+        const myRank = rankingData.jockeys
+          .map((entry) => mapRankingEntry(entry, userId))
+          .find((item) => item.isMe);
+
+        setSidebarMeta({
+          status: profile?.status || "Sẵn sàng",
+          rank: myRank?.rank ?? null,
+        });
+      } catch {
+        if (!active) return;
+        setSidebarMeta({ status: "Sẵn sàng", rank: null });
+      }
+    }
+
+    loadSidebarMeta();
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   const handleLogout = async () => {
     await logout();
@@ -100,8 +136,10 @@ export function JockeyLayout({ children, title, subtitle, actions }) {
               </span>
             </div>
             <div className="text-[11px] text-white/60">
-              Nguyễn Văn A · Rank #3
+              {displayName}
+              {sidebarMeta.rank != null ? ` · Hạng #${sidebarMeta.rank}` : ""}
             </div>
+            <div className="text-[10px] text-white/40 mt-0.5">{sidebarMeta.status}</div>
           </div>
           <button
             onClick={handleLogout}

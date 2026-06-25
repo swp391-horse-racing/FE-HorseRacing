@@ -133,6 +133,11 @@ export const ENDPOINTS = {
   jockeys: {
     available: '/jockeys/available',
     publicById: (id) => `/jockeys/${id}`,
+    profile: '/jockey/profile',
+    dashboard: '/jockey/dashboard',
+    races: '/jockey/races',
+    performance: '/jockey/performance',
+    prizes: '/jockey/prizes',
     ownerInvitations: '/owner/jockey-invitations',
     ownerInvitationById: (id) => `/owner/jockey-invitations/${id}`,
     ownerCancelInvitation: (id) => `/owner/jockey-invitations/${id}/cancel`,
@@ -141,6 +146,9 @@ export const ENDPOINTS = {
     jockeyInvitationById: (id) => `/jockey/invitations/${id}`,
     jockeyAcceptInvitation: (id) => `/jockey/invitations/${id}/accept`,
     jockeyRejectInvitation: (id) => `/jockey/invitations/${id}/reject`,
+  },
+  rankings: {
+    list: '/rankings',
   },
   wallet: {
     me: '/wallets/me',
