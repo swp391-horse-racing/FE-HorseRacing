@@ -1,0 +1,451 @@
+import { useEffect, useMemo, useState } from 'react'
+import { BadgePercent, CalendarClock, ChevronDown, CircleDollarSign, Flag, RefreshCw, Save } from 'lucide-react'
+import { toast } from 'sonner'
+import AdminLayout from '@/components/AdminLayout'
+import Field from '@/components/ui/Field'
+import { Input, Select, TextArea } from '@/components/ui/Input'
+import { adminBettingService } from '@/services/adminBettingService'
+import { tournamentService } from '@/services/tournamentService'
+import { fmtVND } from '@/utils/formatCurrency'
+import { formatDisplayDateTime } from '@/utils/dateFormat'
+import { getApiErrorMessage } from '@/utils/apiError'
+
+function toNumber(value) {
+  const number = Number(value ?? 0)
+  return Number.isFinite(number) ? number : 0
+}
+
+function marketTone(status) {
+  if (status === 'OPEN') return 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+  if (status === 'DRAFT') return 'border-amber-400/30 bg-amber-500/10 text-amber-200'
+  if (status === 'CLOSED') return 'border-sky-400/30 bg-sky-500/10 text-sky-200'
+  if (status === 'SETTLED') return 'border-purple-400/30 bg-purple-500/10 text-purple-200'
+  return 'border-white/10 bg-white/[0.05] text-white/55'
+}
+
+export default function AdminBetMarketsPage() {
+  const [tournaments, setTournaments] = useState([])
+  const [selectedTournamentId, setSelectedTournamentId] = useState('')
+  const [selectedTournament, setSelectedTournament] = useState(null)
+  const [selectedRaceId, setSelectedRaceId] = useState('')
+  const [markets, setMarkets] = useState([])
+  const [marketBets, setMarketBets] = useState([])
+  const [form, setForm] = useState({ minStake: '', maxStake: '', note: '' })
+  const [loading, setLoading] = useState(true)
+  const [loadingTournament, setLoadingTournament] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const selectedRace = useMemo(
+    () => selectedTournament?.races?.find((race) => String(race.id) === String(selectedRaceId)) || null,
+    [selectedRaceId, selectedTournament],
+  )
+
+  const marketByRaceId = useMemo(
+    () =>
+      markets.reduce((result, market) => {
+        if (market?.raceId != null) result[String(market.raceId)] = market
+        return result
+      }, {}),
+    [markets],
+  )
+
+  const selectedRaceMarket = selectedRace ? marketByRaceId[String(selectedRace.id)] : null
+  const loadBaseData = async () => {
+    setLoading(true)
+    try {
+      const [tournamentResponse, marketList] = await Promise.all([
+        tournamentService.getAdminTournaments(),
+        adminBettingService.getMarkets(),
+      ])
+      const nextTournaments = tournamentResponse.data || []
+      setTournaments(nextTournaments)
+      setMarkets(marketList)
+
+      if (!selectedTournamentId && nextTournaments[0]?.id) {
+        setSelectedTournamentId(String(nextTournaments[0].id))
+      }
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadTournamentDetail = async (tournamentId) => {
+    if (!tournamentId) {
+      setSelectedTournament(null)
+      setSelectedRaceId('')
+      return
+    }
+
+    setLoadingTournament(true)
+    try {
+      const response = await tournamentService.getAdminTournament(tournamentId)
+      setSelectedTournament(response.data)
+      const firstRaceId = response.data?.races?.[0]?.id
+      setSelectedRaceId(firstRaceId ? String(firstRaceId) : '')
+    } catch (error) {
+      setSelectedTournament(null)
+      setSelectedRaceId('')
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setLoadingTournament(false)
+    }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadBaseData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadTournamentDetail(selectedTournamentId)
+  }, [selectedTournamentId])
+
+  useEffect(() => {
+    if (selectedRaceMarket) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setForm({
+        minStake: String(selectedRaceMarket.minStake || ''),
+        maxStake: String(selectedRaceMarket.maxStake || ''),
+        note: selectedRaceMarket.note || '',
+      })
+      return
+    }
+    setForm({ minStake: '', maxStake: '', note: '' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRaceMarket?.id])
+
+  const refreshMarkets = async () => {
+    try {
+      const nextMarkets = await adminBettingService.getMarkets()
+      setMarkets(nextMarkets)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  }
+
+  const createMarket = async () => {
+    if (!selectedRace) {
+      toast.error('Vui long chon race')
+      return
+    }
+
+    const minStake = toNumber(form.minStake)
+    const maxStake = toNumber(form.maxStake)
+    if (minStake <= 0 || maxStake <= 0) {
+      toast.error('Min/max stake phai lon hon 0')
+      return
+    }
+    if (minStake > maxStake) {
+      toast.error('Min stake khong duoc lon hon max stake')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await adminBettingService.createMarket(selectedRace.id, {
+        minStake,
+        maxStake,
+        note: form.note.trim(),
+      })
+      toast.success('Da tao cau hinh cuoc cho race')
+      await refreshMarkets()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openMarket = async (marketId) => {
+    setSaving(true)
+    try {
+      await adminBettingService.openMarket(marketId)
+      toast.success('Da mo keo cuoc')
+      await refreshMarkets()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const closeMarket = async (marketId) => {
+    setSaving(true)
+    try {
+      await adminBettingService.closeMarket(marketId)
+      toast.success('Da dong keo cuoc')
+      await refreshMarkets()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const loadMarketBets = async (marketId) => {
+    if (!marketId) {
+      setMarketBets([])
+      return
+    }
+    try {
+      setMarketBets(await adminBettingService.getMarketBets(marketId))
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  }
+
+  return (
+    <AdminLayout
+      heading="Cau hinh"
+      highlight="Cuoc theo race"
+      subtitle="Tao va mo bet market cho tung race dau theo dung API backend"
+    >
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-white">Chon tournament va race</h2>
+              <p className="text-sm text-white/50">Moi race chi co mot market active: DRAFT, OPEN hoac CLOSED.</p>
+            </div>
+            <button
+              type="button"
+              onClick={loadBaseData}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/65 hover:text-white"
+              title="Refresh"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-white/50">
+              Dang tai du lieu...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Field label="Tournament">
+                <div className="relative">
+                  <Select
+                    value={selectedTournamentId}
+                    onChange={(event) => setSelectedTournamentId(event.target.value)}
+                  >
+                    <option value="">Chon tournament</option>
+                    {tournaments.map((tournament) => (
+                      <option key={tournament.id} value={tournament.id}>
+                        {tournament.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+                </div>
+              </Field>
+
+              <div className="space-y-3">
+                {loadingTournament ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-white/45">
+                    Dang tai race...
+                  </div>
+                ) : selectedTournament?.races?.length ? (
+                  selectedTournament.races.map((race) => {
+                    const market = marketByRaceId[String(race.id)]
+                    const active = String(selectedRaceId) === String(race.id)
+                    return (
+                      <button
+                        key={race.id}
+                        type="button"
+                        onClick={() => setSelectedRaceId(String(race.id))}
+                        className={`w-full rounded-2xl border p-4 text-left transition ${
+                          active
+                            ? 'border-[#D4A017]/45 bg-[#D4A017]/12'
+                            : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-bold text-white">{race.name}</div>
+                            <div className="mt-1 flex flex-wrap gap-3 text-xs text-white/45">
+                              <span className="inline-flex items-center gap-1">
+                                <CalendarClock className="h-3.5 w-3.5" />
+                                {formatDisplayDateTime(race.scheduledStartAt || race.raw?.scheduledStartAt)}
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <Flag className="h-3.5 w-3.5" />
+                                {race.statusCode || race.raw?.status || race.status}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={`rounded-full border px-3 py-1 text-xs font-bold ${marketTone(market?.status)}`}>
+                            {market?.status || 'NO MARKET'}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-white/45">
+                    Tournament nay chua co race de cau hinh cuoc.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-6">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#D4A017]/15 text-[#D4A017]">
+                <BadgePercent className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="text-xl font-bold text-white">Market theo race</h2>
+                <p className="text-sm text-white/50">
+                  {selectedRace ? selectedRace.name : 'Chon race de cau hinh min/max stake'}
+                </p>
+              </div>
+            </div>
+
+            {selectedRaceMarket ? (
+              <MarketSummary
+                market={selectedRaceMarket}
+                saving={saving}
+                onOpen={() => openMarket(selectedRaceMarket.id)}
+                onClose={() => closeMarket(selectedRaceMarket.id)}
+                onViewBets={() => loadMarketBets(selectedRaceMarket.id)}
+              />
+            ) : (
+              <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Min stake">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={form.minStake}
+                      onChange={(event) => setForm((current) => ({ ...current, minStake: event.target.value }))}
+                      placeholder="100000"
+                    />
+                  </Field>
+                  <Field label="Max stake">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={form.maxStake}
+                      onChange={(event) => setForm((current) => ({ ...current, maxStake: event.target.value }))}
+                      placeholder="5000000"
+                    />
+                  </Field>
+                </div>
+                <Field label="Ghi chu">
+                  <TextArea
+                    value={form.note}
+                    onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                    placeholder="Thong tin noi bo cho market nay"
+                  />
+                </Field>
+                <button
+                  type="button"
+                  disabled={saving || !selectedRace}
+                  onClick={createMarket}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4A017] px-5 text-sm font-bold text-white transition hover:bg-[#B8941F] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30"
+                >
+                  <Save className="h-4 w-4" />
+                  Tao cau hinh cuoc cho race
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <CircleDollarSign className="h-5 w-5 text-[#D4A017]" />
+              <h2 className="text-xl font-bold text-white">Bets trong market</h2>
+            </div>
+            {marketBets.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-white/45">
+                Chon "Xem bets" o market de tai danh sach, hoac market chua co bet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {marketBets.map((bet) => (
+                  <div key={bet.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-white">{bet.username || `User #${bet.userId || '-'}`}</div>
+                        <div className="text-sm text-white/45">{bet.horseName} · {bet.status}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-[#D4A017]">{fmtVND(bet.stakeAmount)}</div>
+                        <div className="text-xs text-white/40">{formatDisplayDateTime(bet.placedAt)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </AdminLayout>
+  )
+}
+
+function MarketSummary({ market, saving, onOpen, onClose, onViewBets }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${marketTone(market.status)}`}>
+              {market.status}
+            </span>
+            <h3 className="mt-3 text-lg font-bold text-white">{market.raceName}</h3>
+            <p className="text-sm text-white/50">{market.tournamentName}</p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-white/45">Stake range</div>
+            <div className="font-black text-[#D4A017]">
+              {fmtVND(market.minStake)} - {fmtVND(market.maxStake)}
+            </div>
+          </div>
+        </div>
+        {market.note && (
+          <p className="mt-4 rounded-xl bg-white/[0.04] p-3 text-sm leading-6 text-white/55">{market.note}</p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        {(market.status === 'DRAFT' || market.status === 'CLOSED') && (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onOpen}
+            className="h-11 rounded-xl bg-emerald-500 px-4 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+          >
+            Mo keo cuoc
+          </button>
+        )}
+        {market.status === 'OPEN' && (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onClose}
+            className="h-11 rounded-xl bg-rose-500 px-4 text-sm font-bold text-white transition hover:bg-rose-600 disabled:opacity-50"
+          >
+            Dong keo cuoc
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onViewBets}
+          className="h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+        >
+          Xem bets
+        </button>
+      </div>
+    </div>
+  )
+}

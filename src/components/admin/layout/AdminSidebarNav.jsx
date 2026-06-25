@@ -22,7 +22,7 @@ export default function AdminSidebarNav({ onNavigate }) {
               active
                 ? 'border-[#D4A017]/30 bg-[#D4A017]/15 text-white shadow-md shadow-[#D4A017]/10'
                 : 'border-transparent text-white/60 hover:bg-white/5 hover:text-white'
-            }`}
+            } ${item.indent ? 'ml-5' : ''}`}
           >
             <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#D4A017]' : ''}`} />
             <span className="font-semibold">{item.label}</span>
