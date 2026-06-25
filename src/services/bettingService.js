@@ -48,6 +48,8 @@ export function mapBet(bet) {
     marketId: bet?.marketId,
     raceId: bet?.raceId,
     raceName: bet?.raceName || 'Cuộc đua',
+    userId: bet?.userId,
+    username: bet?.username ?? '',
     participantId: bet?.participantId,
     horseId: bet?.horseId,
     horseName: bet?.horseName || 'Chưa cập nhật',

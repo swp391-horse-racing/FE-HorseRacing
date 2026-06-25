@@ -1,4 +1,5 @@
 import {
+  BadgePercent,
   Gavel,
   LayoutDashboard,
   Newspaper,
@@ -10,12 +11,13 @@ import {
 } from 'lucide-react'
 
 export const ADMIN_NAV = [
-  { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard },
-  { label: 'Giải đấu', to: '/admin/tournaments', icon: Trophy },
-  { label: 'Phân công trọng tài', to: '/admin/judges', icon: Gavel },
-  { label: 'Tin tức', to: '/admin/news', icon: Newspaper },
-  { label: 'Người dùng', to: '/admin/users', icon: Users },
-  { label: 'Ngựa', to: '/admin/horses', icon: PawPrint },
-  { label: 'Ví hệ thống', to: '/admin/wallet', icon: Wallet },
-  { label: 'Cài đặt', to: '/admin/settings', icon: Settings },
+  { label: 'Tong quan', to: '/admin', icon: LayoutDashboard },
+  { label: 'Giai dau', to: '/admin/tournaments', icon: Trophy },
+  { label: 'Phan cong trong tai', to: '/admin/judges', icon: Gavel },
+  { label: 'Tin tuc', to: '/admin/news', icon: Newspaper },
+  { label: 'Nguoi dung', to: '/admin/users', icon: Users },
+  { label: 'Ngua', to: '/admin/horses', icon: PawPrint },
+  { label: 'Vi he thong', to: '/admin/wallet', icon: Wallet },
+  { label: 'Cai dat', to: '/admin/settings', icon: Settings },
+  { label: 'Cau hinh cuoc race', to: '/admin/bet-markets', icon: BadgePercent },
 ]

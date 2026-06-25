@@ -40,6 +40,10 @@ export const ENDPOINTS = {
     fees: '/admin/system-settings/fees',
     raceDistances: '/admin/system-settings/race-distances',
   },
+  financeSettings: {
+    admin: '/admin/finance-settings',
+    racePrizeShares: '/admin/finance-settings/race-prize-shares',
+  },
   dashboard: {
     tournamentRegistrations: '/admin/dashboard/tournament-registrations',
   },
@@ -69,6 +73,11 @@ export const ENDPOINTS = {
     results: (id) => `/races/${id}/results`,
   },
   betting: {
+    adminCreateMarket: (raceId) => `/admin/races/${raceId}/bet-market`,
+    adminOpenMarket: (id) => `/admin/bet-markets/${id}/open`,
+    adminCloseMarket: (id) => `/admin/bet-markets/${id}/close`,
+    adminMarkets: '/admin/bet-markets',
+    adminMarketBets: (id) => `/admin/bet-markets/${id}/bets`,
     publicMarket: (raceId) => `/races/${raceId}/bet-market`,
     bettableRaces: '/users/me/bettable-races',
     placeBet: (raceId) => `/races/${raceId}/bets`,

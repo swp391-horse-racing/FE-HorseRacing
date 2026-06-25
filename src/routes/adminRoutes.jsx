@@ -10,6 +10,7 @@ import AdminHorsesPage from '@/pages/admin/AdminHorsesPage'
 import AdminSettingsPage from '@/pages/admin/AdminSettingsPage'
 import AdminWalletPage from '@/pages/admin/AdminWalletPage'
 import AdminJudgesPage from '@/pages/admin/AdminJudgesPage'
+import AdminBetMarketsPage from '@/pages/admin/AdminBetMarketsPage'
 import { withAdminRole } from './guards'
 
 function adminRoute(path, Page) {
@@ -29,4 +30,5 @@ export const adminRoutes = [
   adminRoute('/admin/horses', AdminHorsesPage),
   adminRoute('/admin/wallet', AdminWalletPage),
   adminRoute('/admin/settings', AdminSettingsPage),
+  adminRoute('/admin/bet-markets', AdminBetMarketsPage),
 ]

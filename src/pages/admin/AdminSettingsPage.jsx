@@ -8,11 +8,11 @@ import DefaultFeesSettingsPanel from '@/components/admin/DefaultFeesSettingsPane
 import RefereeFeeSettingsPanel from '@/components/admin/RefereeFeeSettingsPanel'
 
 const tabs = [
-  { key: 'fees', label: 'Lệ phí mặc định', icon: DollarSign },
-  { key: 'rules', label: 'Luật mặc định', icon: FileText },
-  { key: 'locations', label: 'Tỉnh & địa điểm đua', icon: MapPin },
-  { key: 'race-distances', label: 'Khoảng cách đua', icon: Ruler },
-  { key: 'referee-fee', label: 'Lương trọng tài', icon: Banknote },
+  { key: 'fees', label: 'Le phi mac dinh', icon: DollarSign },
+  { key: 'rules', label: 'Luat mac dinh', icon: FileText },
+  { key: 'locations', label: 'Tinh & dia diem dua', icon: MapPin },
+  { key: 'race-distances', label: 'Khoang cach dua', icon: Ruler },
+  { key: 'referee-fee', label: 'Luong trong tai', icon: Banknote },
 ]
 
 export default function AdminSettingsPage() {
@@ -25,9 +25,9 @@ export default function AdminSettingsPage() {
 
   return (
     <AdminLayout
-      heading="Cài đặt"
-      highlight="Hệ thống"
-      subtitle="Cấu hình mặc định dùng chung cho toàn bộ nền tảng admin"
+      heading="Cai dat"
+      highlight="He thong"
+      subtitle="Cau hinh mac dinh dung chung cho nen tang admin"
     >
       <section className="mb-8 flex flex-wrap gap-2 rounded-3xl border border-white/10 bg-white/[0.045] p-2">
         {tabs.map((item) => {
@@ -60,7 +60,7 @@ export default function AdminSettingsPage() {
             </span>
             <div>
               <h2 className="text-xl font-bold">{tabs.find((item) => item.key === tab)?.label}</h2>
-              <p className="text-sm text-white/50">Thiết lập nhanh theo module</p>
+              <p className="text-sm text-white/50">Thiet lap nhanh theo module</p>
             </div>
           </div>
 
@@ -71,7 +71,7 @@ export default function AdminSettingsPage() {
               className="flex h-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-[#dda50e] px-4 text-sm font-semibold text-white shadow-lg shadow-[#dda50e]/15 transition hover:bg-[#c8940f] sm:self-auto"
             >
               <Plus className="h-4 w-4" />
-              Thêm lệ phí
+              Them le phi
             </button>
           )}
         </div>
