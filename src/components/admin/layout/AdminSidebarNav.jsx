@@ -8,7 +8,7 @@ export default function AdminSidebarNav({ onNavigate }) {
     to === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(to)
 
   return (
-    <nav aria-label="Dieu huong quan tri" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+    <nav aria-label="Điều hướng quản trị" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
       {ADMIN_NAV.map((item) => {
         const Icon = item.icon
         const active = isActive(item.to)
