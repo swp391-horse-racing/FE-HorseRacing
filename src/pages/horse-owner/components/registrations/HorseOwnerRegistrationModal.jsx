@@ -85,10 +85,6 @@ export function HorseOwnerRegistrationModal({
               className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-[#D4A017] focus:outline-none focus:ring-2 focus:ring-[#D4A017]/20"
             />
           </div>
-
-          <div className="rounded-xl border border-[#D4A017]/25 bg-[#D4A017]/10 p-4 text-sm text-white/70">
-            Backend sẽ tự trừ lệ phí đăng ký từ ví owner khi gửi thành công.
-          </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-white/10 p-5">
