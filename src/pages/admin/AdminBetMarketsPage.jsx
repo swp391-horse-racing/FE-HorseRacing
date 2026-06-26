@@ -168,18 +168,18 @@ export default function AdminBetMarketsPage() {
 
   const createMarket = async () => {
     if (!selectedRace) {
-      toast.error('Vui long chon race')
+      toast.error('Vui lòng chọn race')
       return
     }
 
     const minStake = toNumber(form.minStake)
     const maxStake = toNumber(form.maxStake)
     if (minStake <= 0 || maxStake <= 0) {
-      toast.error('Min/max stake phai lon hon 0')
+      toast.error('Min/max stake phải lớn hơn 0')
       return
     }
     if (minStake > maxStake) {
-      toast.error('Min stake khong duoc lon hon max stake')
+      toast.error('Min stake không được lớn hơn max stake')
       return
     }
 
@@ -190,7 +190,7 @@ export default function AdminBetMarketsPage() {
         maxStake,
         note: form.note.trim(),
       })
-      toast.success('Da tao cau hinh cuoc cho race')
+      toast.success('Đã tạo cấu hình cược cho race')
       await refreshMarkets()
     } catch (error) {
       toast.error(getApiErrorMessage(error))
@@ -203,7 +203,7 @@ export default function AdminBetMarketsPage() {
     setSaving(true)
     try {
       await adminBettingService.openMarket(marketId)
-      toast.success('Da mo keo cuoc')
+      toast.success('Đã mở kèo cược')
       await refreshMarkets()
     } catch (error) {
       toast.error(getApiErrorMessage(error))
@@ -216,7 +216,7 @@ export default function AdminBetMarketsPage() {
     setSaving(true)
     try {
       await adminBettingService.closeMarket(marketId)
-      toast.success('Da dong keo cuoc')
+      toast.success('Đã đóng kèo cược')
       await refreshMarkets()
     } catch (error) {
       toast.error(getApiErrorMessage(error))
@@ -239,17 +239,17 @@ export default function AdminBetMarketsPage() {
 
   return (
     <AdminLayout
-      heading="Cau hinh"
-      highlight="Cuoc theo race"
-      subtitle="Tao va mo bet market cho tung race dau theo dung API backend"
+      heading="Cấu hình"
+      highlight="Cược theo race"
+      subtitle="Tạo và mở bet market cho từng race đấu theo đúng API backend"
     >
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold text-white">Chon tournament va race</h2>
+              <h2 className="text-xl font-bold text-white">Chọn tournament và race</h2>
               <p className="text-sm text-white/50">
-                Chi hien race chua den gio bat dau de cau hinh cuoc.
+                Chỉ hiện race chưa đến giờ bắt đầu để cấu hình cược.
               </p>
             </div>
             <button
@@ -264,7 +264,7 @@ export default function AdminBetMarketsPage() {
 
           {loading ? (
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-white/50">
-              Dang tai du lieu...
+              Đang tải dữ liệu...
             </div>
           ) : (
             <div className="space-y-4">
@@ -274,7 +274,7 @@ export default function AdminBetMarketsPage() {
                     value={selectedTournamentId}
                     onChange={(event) => setSelectedTournamentId(event.target.value)}
                   >
-                    <option value="">Chon tournament</option>
+                    <option value="">Chọn tournament</option>
                     {tournaments.map((tournament) => (
                       <option key={tournament.id} value={tournament.id}>
                         {tournament.name}
@@ -288,7 +288,7 @@ export default function AdminBetMarketsPage() {
               <div className="space-y-3">
                 {loadingTournament ? (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-white/45">
-                    Dang tai race...
+                    Đang tải race...
                   </div>
                 ) : selectedTournament?.races?.length ? (
                   selectedTournament.races.map((race) => {
@@ -328,7 +328,7 @@ export default function AdminBetMarketsPage() {
                   })
                 ) : (
                   <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-white/45">
-                    Tournament nay khong con race chua dien ra de cau hinh cuoc.
+                    Tournament này không còn race chưa diễn ra để cấu hình cược.
                   </div>
                 )}
               </div>
@@ -345,7 +345,7 @@ export default function AdminBetMarketsPage() {
               <div>
                 <h2 className="text-xl font-bold text-white">Market theo race</h2>
                 <p className="text-sm text-white/50">
-                  {selectedRace ? selectedRace.name : 'Chon race de cau hinh min/max stake'}
+                  {selectedRace ? selectedRace.name : 'Chọn race để cấu hình min/max stake'}
                 </p>
               </div>
             </div>
@@ -376,11 +376,11 @@ export default function AdminBetMarketsPage() {
                     />
                   </Field>
                 </div>
-                <Field label="Ghi chu">
+                <Field label="Ghi chú">
                   <TextArea
                     value={form.note}
                     onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
-                    placeholder="Thong tin noi bo cho market nay"
+                    placeholder="Thông tin nội bộ cho market này"
                   />
                 </Field>
                 <button
@@ -390,7 +390,7 @@ export default function AdminBetMarketsPage() {
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4A017] px-5 text-sm font-bold text-white transition hover:bg-[#B8941F] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30"
                 >
                   <Save className="h-4 w-4" />
-                  Tao cau hinh cuoc cho race
+                  Tạo cấu hình cược cho race
                 </button>
               </div>
             )}
@@ -403,7 +403,7 @@ export default function AdminBetMarketsPage() {
             </div>
             {marketBets.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-white/45">
-                Chon "Xem bets" o market de tai danh sach, hoac market chua co bet.
+                Chọn "Xem bets" ở market để tải danh sách, hoặc market chưa có bet.
               </div>
             ) : (
               <div className="space-y-3">
@@ -462,7 +462,7 @@ function MarketSummary({ market, saving, onOpen, onClose, onViewBets }) {
             onClick={onOpen}
             className="h-11 rounded-xl bg-emerald-500 px-4 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
           >
-            Mo keo cuoc
+            Mở kèo cược
           </button>
         )}
         {market.status === 'OPEN' && (
@@ -472,7 +472,7 @@ function MarketSummary({ market, saving, onOpen, onClose, onViewBets }) {
             onClick={onClose}
             className="h-11 rounded-xl bg-rose-500 px-4 text-sm font-bold text-white transition hover:bg-rose-600 disabled:opacity-50"
           >
-            Dong keo cuoc
+            Đóng kèo cược
           </button>
         )}
         <button
