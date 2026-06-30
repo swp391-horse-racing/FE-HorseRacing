@@ -19,5 +19,5 @@ export const ADMIN_NAV = [
   { label: 'Ngựa', to: '/admin/horses', icon: PawPrint },
   { label: 'Ví hệ thống', to: '/admin/wallet', icon: Wallet },
   { label: 'Cài đặt', to: '/admin/settings', icon: Settings },
-  { label: 'Cấu hình cược race', to: '/admin/bet-markets', icon: BadgePercent },
+  { label: 'Cấu hình cược', to: '/admin/bet-markets', icon: BadgePercent },
 ]
